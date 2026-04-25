@@ -1,0 +1,32 @@
+[
+  {
+    "id": "penguins",
+    "name": "Palmer Penguins",
+    "description": "Size measurements for adult foraging penguins near Palmer Station, Antarctica.",
+    "topic": "Biology",
+    "difficulty": "Beginner",
+    "size": "344 rows, 8 columns",
+    "suggested_objectives": ["Species classification", "Mass vs Flipper correlation"],
+    "load_command": "data(penguins, package='palmerpenguins')"
+  },
+  {
+    "id": "gapminder",
+    "name": "Gapminder",
+    "description": "Global life expectancy and GDP data.",
+    "topic": "Economics",
+    "difficulty": "Intermediate",
+    "size": "1704 rows, 6 columns",
+    "suggested_objectives": ["Trend analysis by continent"],
+    "load_command": "data(gapminder, package='gapminder')"
+  },
+  {
+    "id": "iris",
+    "name": "Iris",
+    "description": "The classic Fisher's Iris data.",
+    "topic": "Statistics 101",
+    "difficulty": "Beginner",
+    "size": "150 rows, 5 columns",
+    "suggested_objectives": ["Clustering basics"],
+    "load_command": "data(iris)"
+  }
+]
