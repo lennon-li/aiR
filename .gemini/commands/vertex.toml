@@ -1,0 +1,12 @@
+description = "Login to Google Cloud and configure Vertex AI billing by selecting a project."
+
+prompt = """
+Task: Help the user log in to Vertex AI and select a billing project.
+
+I have executed a PowerShell script to handle the interactive login process. 
+
+Script Output:
+!{powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/vertex_login.ps1}
+
+Based on the output above, please confirm the login status and summarize the project configuration.
+"""

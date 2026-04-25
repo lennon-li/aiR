@@ -1,0 +1,5 @@
+library(plumber)
+options(googleAuthR.scopes.selected = "https://www.googleapis.com/auth/devstorage.full_control")
+port <- as.numeric(Sys.getenv("PORT", "8080"))
+pr <- plumb("plumber.R")
+pr$run(host = "0.0.0.0", port = port, swagger = FALSE)

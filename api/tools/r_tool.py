@@ -1,0 +1,64 @@
+import os
+import requests
+from google.oauth2 import id_token
+from google.auth.transport.requests import Request as GoogleAuthRequest
+
+def execute_r_code_internal(code: str, session_id: str) -> dict:
+    """
+    Backend implementation that calls the R service.
+    """
+    R_RUNTIME_URL = os.getenv("R_RUNTIME_URL")
+    SESSION_BUCKET = os.getenv("SESSION_BUCKET", "air-mvp-lennon-li-2026-sessions")
+    
+    try:
+        token = id_token.fetch_id_token(GoogleAuthRequest(), R_RUNTIME_URL)
+        r_payload = {"session_id": session_id, "code": code, "persist_bucket": SESSION_BUCKET}
+        resp = requests.post(f"{R_RUNTIME_URL}/execute", json=r_payload, headers={"Authorization": f"Bearer {token}"}, timeout=120)
+        
+        if resp.status_code != 200:
+            error_msg = f"R Service Error ({resp.status_code})"
+            try:
+                error_msg = resp.json().get("error", error_msg)
+            except:
+                error_msg = f"R Service Failure ({resp.status_code}): {resp.text[:200]}"
+            return {"ok": False, "error": error_msg}
+            
+        r_result = resp.json()
+        if r_result.get("status") == "error":
+            return {"ok": False, "error": r_result.get("error"), "stdout": r_result.get("stdout", "")}
+        
+        plot_urls = []
+        raw_plots = r_result.get("plots", [])
+        for raw_path in raw_plots:
+            plot_path = raw_path[0] if isinstance(raw_path, list) and len(raw_path) > 0 else raw_path
+            if not isinstance(plot_path, str): continue
+            plot_urls.append(f"/v1/artifacts/{plot_path}")
+            
+        return {
+            "ok": True,
+            "stdout": r_result.get("stdout", ""),
+            "error": None,
+            "plots": plot_urls,
+            "environment": r_result.get("environment", []),
+            "objects_changed": r_result.get("objects_changed", [])
+        }
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+# The tool declaration that the LLM will see
+# We only expose the `code` parameter to the LLM.
+# The orchestrator will inject the session_id.
+execute_r_code_declaration = {
+    "name": "execute_r_code",
+    "description": "Executes R code in the current aiR session. Used for analysis, plotting, modeling, and calculations. Returns stdout, error (if any), generated plots, and environment summary.",
+    "parameters": {
+        "type": "OBJECT",
+        "properties": {
+            "code": {
+                "type": "STRING",
+                "description": "Complete, valid R code to execute in the current session environment. Must not include markdown fences."
+            }
+        },
+        "required": ["code"]
+    }
+}

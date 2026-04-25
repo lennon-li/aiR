@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+google-cloud-discoveryengine
+google-cloud-storage
+google-cloud-iam
+google-cloud-firestore
+requests
+pydantic
+python-multipart
+google-genai>=1.0.0
+google-cloud-aiplatform
