@@ -165,18 +165,37 @@ async def chat(session_id: str, request: ChatRequest):
         
         from schemas import AnalysisStepResponse
         final_json_text = ""
+        import time
+        start_time = time.time()
+        TIMEOUT_SECONDS = 90
+        
         try:
             # call_agent_stream now performs the credit-eligible search internally
             for event in call_agent_stream(session_uuid, request.message, policy, context_data):
+                if time.time() - start_time > TIMEOUT_SECONDS:
+                    raise Exception("The analysis is taking longer than expected due to high system load. Please try a simpler request or wait a moment.")
+                
                 if event.get("type") == "done":
                     final_json_text = event.get("full_content", "")
             
+            if not final_json_text:
+                raise Exception("The reasoning engine is currently busy and could not finalize the response. Please try again.")
+                
             structured_data = json.loads(final_json_text)
             structured_response = AnalysisStepResponse(**structured_data)
         except Exception as e:
+            print(f"Chat Error: {e}")
+            msg = str(e)
+            if "quota" in msg.lower() or "limit" in msg.lower() or "429" in msg:
+                msg = "System is currently at capacity. Please wait a few seconds and try again."
+            elif "timeout" in msg.lower() or "timed out" in msg.lower():
+                msg = "The analysis timed out. Our R engine might be busy processing complex data. Please try a smaller step."
+            else:
+                msg = "I encountered a transient error while reasoning. Please try sending your message again."
+
             structured_response = AnalysisStepResponse(
-                summary="I encountered an error generating the final summary.",
-                what="Error", why="Model execution failed.", code="", interpretation=str(e), next_step="Try again.", options=[], uses_objects=[], should_autorun=False
+                summary=msg,
+                what="System Busy", why="Transient processing error or timeout.", code="", interpretation=str(e), next_step="Please try your last request again.", options=[], uses_objects=[], should_autorun=False
             )
 
     log_event("chat_request", session_uuid, {
@@ -206,8 +225,6 @@ async def chat_stream(session_id: str, request: ChatRequest):
     grounding_context = ""
     if intent == "FILE_TASK":
         grounding_context = get_file_previews(session_uuid, request.file_names)
-    elif intent in ["DOCS_EXPLAIN", "DEBUG"]:
-        grounding_context, _, _ = search_r_docs(request.message)
 
     context_data = {
         "objective": request.objective or objective,
@@ -215,7 +232,7 @@ async def chat_stream(session_id: str, request: ChatRequest):
         "env_summary": request.env_summary,
         "recent_history": request.recent_history,
         "last_error": request.last_error,
-        "grounding_context": grounding_context
+        "grounding_context": grounding_context # Orchestrator will supplement this via Search API
     }
 
     async def event_generator():
@@ -266,6 +283,10 @@ async def execute(session_id: str, payload: dict = Body(...)):
         except Exception as e:
             status = "error"
             error_msg = str(e)
+            if "timeout" in error_msg.lower():
+                error_msg = "The R service timed out. The system is currently busy or the computation is too intensive."
+            else:
+                error_msg = f"R Service Error: {error_msg}. Please try again."
 
     log_event("execute_request", session_uuid, {
         "mode": policy["label"],
