@@ -19,7 +19,8 @@ RUN apt-get update && apt-get install -y \
 
 # Use Posit Public Package Manager (PPM) binary repository for faster and more reliable installation
 RUN Rscript -e "options(repos = c(CRAN = 'https://packagemanager.posit.co/cran/__linux__/bookworm/latest')); \
-    install.packages(c('plumber', 'jsonlite', 'magrittr', 'ragg', 'systemfonts', 'googleCloudStorageR', 'googleAuthR', 'ggplot2', 'dplyr', 'tidyr', 'readr', 'tibble', 'stringr', 'forcats', 'purrr', 'data.table', 'scales', 'janitor', 'lubridate'))"
+    install.packages(c('plumber', 'jsonlite', 'magrittr', 'ragg', 'systemfonts', 'googleCloudStorageR', 'googleAuthR', 'tidyverse', 'data.table', 'scales', 'janitor', 'lubridate')); \
+    if (!requireNamespace('plumber', quietly = TRUE)) stop('plumber package installation failed')"
 
 WORKDIR /app
 COPY . .

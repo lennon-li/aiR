@@ -1,0 +1,170 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1777157630910,
+  "projectRoot": "C:\\Users\\lennon.li\\Documents\\GitHub\\aiR",
+  "techStack": {
+    "languages": [],
+    "frameworks": [],
+    "packageManager": null,
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": null,
+    "lintCommand": null,
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "docs",
+      "scripts"
+    ],
+    "gitBranches": null
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "api": {
+      "path": "api",
+      "purpose": "API routes",
+      "fileCount": 12,
+      "lastAccessed": 1777157630872,
+      "keyFiles": [
+        "cache_bust.txt",
+        "Dockerfile",
+        "llm_orchestrator.bak.py",
+        "llm_orchestrator.py",
+        "main.bak.py"
+      ]
+    },
+    "conductor": {
+      "path": "conductor",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1777157630872,
+      "keyFiles": [
+        "aiR-mvp-design.md",
+        "aiR-vertex-grounding-plan.md"
+      ]
+    },
+    "data": {
+      "path": "data",
+      "purpose": "Data files",
+      "fileCount": 1,
+      "lastAccessed": 1777157630873,
+      "keyFiles": [
+        "sample_catalog.json"
+      ]
+    },
+    "docs": {
+      "path": "docs",
+      "purpose": "Documentation",
+      "fileCount": 5,
+      "lastAccessed": 1777157630873,
+      "keyFiles": [
+        "agent_context.md",
+        "CREDIT_OPTIMIZATION.md",
+        "INTEGRATION.md",
+        "OPERATING_RULES.md",
+        "TODO_NEXT.md"
+      ]
+    },
+    "infra": {
+      "path": "infra",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1777157630873,
+      "keyFiles": [
+        "deploy.ps1"
+      ]
+    },
+    "out": {
+      "path": "out",
+      "purpose": "Build output",
+      "fileCount": 1,
+      "lastAccessed": 1777157630873,
+      "keyFiles": [
+        "index.html"
+      ]
+    },
+    "r-service": {
+      "path": "r-service",
+      "purpose": null,
+      "fileCount": 3,
+      "lastAccessed": 1777157630874,
+      "keyFiles": [
+        "Dockerfile",
+        "plumber.R",
+        "run.R"
+      ]
+    },
+    "scripts": {
+      "path": "scripts",
+      "purpose": "Build/utility scripts",
+      "fileCount": 4,
+      "lastAccessed": 1777157630874,
+      "keyFiles": [
+        "verify_models.py",
+        "verify_restored_slice.ps1",
+        "verify_vertical_slice.ps1",
+        "vertex_login.ps1"
+      ]
+    },
+    "shared": {
+      "path": "shared",
+      "purpose": null,
+      "fileCount": 3,
+      "lastAccessed": 1777157630875,
+      "keyFiles": [
+        "EXAMPLES.md",
+        "models.py",
+        "STORAGE.md"
+      ]
+    },
+    "web": {
+      "path": "web",
+      "purpose": null,
+      "fileCount": 14,
+      "lastAccessed": 1777157630875,
+      "keyFiles": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "eslint.config.mjs",
+        "firebase.json",
+        "next-env.d.ts"
+      ]
+    },
+    "web-backup": {
+      "path": "web-backup",
+      "purpose": null,
+      "fileCount": 3,
+      "lastAccessed": 1777157630877,
+      "keyFiles": [
+        "api.ts",
+        "package.json",
+        "Workspace.tsx"
+      ]
+    },
+    "web-backup\\app": {
+      "path": "web-backup\\app",
+      "purpose": "Application code",
+      "fileCount": 3,
+      "lastAccessed": 1777157630878,
+      "keyFiles": [
+        "globals.css",
+        "layout.tsx",
+        "page.tsx"
+      ]
+    }
+  },
+  "hotPaths": [],
+  "userDirectives": []
+}
