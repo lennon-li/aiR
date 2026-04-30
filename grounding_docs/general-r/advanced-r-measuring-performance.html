@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<title>23 Measuring performance | Advanced R</title>
+<meta name="author" content="Hadley Wickham">
+<meta name="generator" content="bookdown 0.42 with bs4_book()">
+<meta property="og:title" content="23 Measuring performance | Advanced R">
+<meta property="og:type" content="book">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="23 Measuring performance | Advanced R">
+<!-- JS --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/6.4.6/fuse.js" integrity="sha512-zv6Ywkjyktsohkbp9bb45V6tEMoWhzFzXis+LrMehmJZZSys19Yxf1dopHx7WzIKxr5tK2dVcYmaCk2uqdjF4A==" crossorigin="anonymous"></script><script src="https://kit.fontawesome.com/6ecbd6c532.js" crossorigin="anonymous"></script><script src="libs/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<link href="libs/bootstrap-4.6.0/bootstrap.min.css" rel="stylesheet">
+<script src="libs/bootstrap-4.6.0/bootstrap.bundle.min.js"></script><script src="libs/bs3compat-0.9.0/transition.js"></script><script src="libs/bs3compat-0.9.0/tabs.js"></script><script src="libs/bs3compat-0.9.0/bs3compat.js"></script><link href="libs/bs4_book-1.0.0/bs4_book.css" rel="stylesheet">
+<script src="libs/bs4_book-1.0.0/bs4_book.js"></script><!-- Global site tag (gtag.js) - Google Analytics --><script async src="https://www.googletagmanager.com/gtag/js?id=UA-141212623-1"></script><script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'UA-141212623-1');
+    </script><script src="https://cdnjs.cloudflare.com/ajax/libs/autocomplete.js/0.38.0/autocomplete.jquery.min.js" integrity="sha512-GU9ayf+66Xx2TmpxqJpliWbT5PiGYxpaG8rfnBEk1LL8l1KGkRShhngwdXK1UgqhAzWpZHSiYPc09/NwDQIGyg==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mark.js/8.11.1/mark.min.js" integrity="sha512-5CYOlHXGh6QpOFA/TeTylKLWfB3ftPsde7AnmhuitiTX4K5SqCLBeKro6sPS8ilsz1Q4NRx3v8Ko2IBiszzdww==" crossorigin="anonymous"></script><!-- CSS --><style type="text/css">
+    
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  </style>
+<meta name="description" content="23.1 Introduction  Programmers waste enormous amounts of time thinking about, or worrying about, the speed of noncritical parts of their programs, and these attempts at efficiency actually have a...">
+<meta property="og:description" content="23.1 Introduction  Programmers waste enormous amounts of time thinking about, or worrying about, the speed of noncritical parts of their programs, and these attempts at efficiency actually have a...">
+<meta name="twitter:description" content="23.1 Introduction  Programmers waste enormous amounts of time thinking about, or worrying about, the speed of noncritical parts of their programs, and these attempts at efficiency actually have a...">
+</head>
+<body data-spy="scroll" data-target="#toc">
+
+<div class="container-fluid">
+<div class="row">
+  <header class="col-sm-12 col-lg-3 sidebar sidebar-book"><a class="sr-only sr-only-focusable" href="#content">Skip to main content</a>
+
+    <div class="d-flex align-items-start justify-content-between">
+      <h1>
+        <a href="index.html" title="">Advanced R</a>
+      </h1>
+      <button class="btn btn-outline-primary d-lg-none ml-2 mt-1" type="button" data-toggle="collapse" data-target="#main-nav" aria-expanded="true" aria-controls="main-nav"><i class="fas fa-bars"></i><span class="sr-only">Show table of contents</span></button>
+    </div>
+
+    <div id="main-nav" class="collapse-lg">
+      <form role="search">
+        <input id="search" class="form-control" type="search" placeholder="Search" aria-label="Search">
+</form>
+
+      <nav aria-label="Table of contents"><h2>Table of contents</h2>
+        <ul class="book-toc list-unstyled">
+<li><a class="" href="index.html">Welcome</a></li>
+<li><a class="" href="preface.html">Preface</a></li>
+<li><a class="" href="introduction.html"><span class="header-section-number">1</span> Introduction</a></li>
+<li class="book-part">Foundations</li>
+<li><a class="" href="foundations-intro.html">Introduction</a></li>
+<li><a class="" href="names-values.html"><span class="header-section-number">2</span> Names and values</a></li>
+<li><a class="" href="vectors-chap.html"><span class="header-section-number">3</span> Vectors</a></li>
+<li><a class="" href="subsetting.html"><span class="header-section-number">4</span> Subsetting</a></li>
+<li><a class="" href="control-flow.html"><span class="header-section-number">5</span> Control flow</a></li>
+<li><a class="" href="functions.html"><span class="header-section-number">6</span> Functions</a></li>
+<li><a class="" href="environments.html"><span class="header-section-number">7</span> Environments</a></li>
+<li><a class="" href="conditions.html"><span class="header-section-number">8</span> Conditions</a></li>
+<li class="book-part">Functional programming</li>
+<li><a class="" href="fp.html">Introduction</a></li>
+<li><a class="" href="functionals.html"><span class="header-section-number">9</span> Functionals</a></li>
+<li><a class="" href="function-factories.html"><span class="header-section-number">10</span> Function factories</a></li>
+<li><a class="" href="function-operators.html"><span class="header-section-number">11</span> Function operators</a></li>
+<li class="book-part">Object-oriented programming</li>
+<li><a class="" href="oo.html">Introduction</a></li>
+<li><a class="" href="base-types.html"><span class="header-section-number">12</span> Base types</a></li>
+<li><a class="" href="s3.html"><span class="header-section-number">13</span> S3</a></li>
+<li><a class="" href="r6.html"><span class="header-section-number">14</span> R6</a></li>
+<li><a class="" href="s4.html"><span class="header-section-number">15</span> S4</a></li>
+<li><a class="" href="oo-tradeoffs.html"><span class="header-section-number">16</span> Trade-offs</a></li>
+<li class="book-part">Metaprogramming</li>
+<li><a class="" href="metaprogramming.html">Introduction</a></li>
+<li><a class="" href="meta-big-picture.html"><span class="header-section-number">17</span> Big picture</a></li>
+<li><a class="" href="expressions.html"><span class="header-section-number">18</span> Expressions</a></li>
+<li><a class="" href="quasiquotation.html"><span class="header-section-number">19</span> Quasiquotation</a></li>
+<li><a class="" href="evaluation.html"><span class="header-section-number">20</span> Evaluation</a></li>
+<li><a class="" href="translation.html"><span class="header-section-number">21</span> Translating R code</a></li>
+<li class="book-part">Techniques</li>
+<li><a class="" href="techniques.html">Introduction</a></li>
+<li><a class="" href="debugging.html"><span class="header-section-number">22</span> Debugging</a></li>
+<li><a class="active" href="perf-measure.html"><span class="header-section-number">23</span> Measuring performance</a></li>
+<li><a class="" href="perf-improve.html"><span class="header-section-number">24</span> Improving performance</a></li>
+<li><a class="" href="rcpp.html"><span class="header-section-number">25</span> Rewriting R code in C++</a></li>
+<li><a class="" href="references.html">References</a></li>
+</ul>
+
+        <div class="book-extra">
+          <p><a id="book-repo" href="https://github.com/hadley/adv-r">View book source <i class="fab fa-github"></i></a></p>
+        </div>
+      </nav>
+</div>
+  </header><main class="col-sm-12 col-md-9 col-lg-7" id="content"><div id="perf-measure" class="section level1" number="23">
+<h1>
+<span class="header-section-number">23</span> Measuring performance<a class="anchor" aria-label="anchor" href="#perf-measure"><i class="fas fa-link"></i></a>
+</h1>
+<p></p>
+<div id="introduction-22" class="section level2" number="23.1">
+<h2>
+<span class="header-section-number">23.1</span> Introduction<a class="anchor" aria-label="anchor" href="#introduction-22"><i class="fas fa-link"></i></a>
+</h2>
+<blockquote>
+<p>Programmers waste enormous amounts of time thinking about, or worrying
+about, the speed of noncritical parts of their programs, and these attempts
+at efficiency actually have a strong negative impact when debugging and
+maintenance are considered.</p>
+<p>— Donald Knuth</p>
+</blockquote>
+<p>Before you can make your code faster, you first need to figure out what’s making it slow. This sounds easy, but it’s not. Even experienced programmers have a hard time identifying bottlenecks in their code. So instead of relying on your intuition, you should <strong>profile</strong> your code: measure the run-time of each line of code using realistic inputs.</p>
+<p>Once you’ve identified bottlenecks you’ll need to carefully experiment with alternatives to find faster code that is still equivalent. In Chapter <a href="perf-improve.html#perf-improve">24</a> you’ll learn a bunch of ways to speed up code, but first you need to learn how to <strong>microbenchmark</strong> so that you can precisely measure the difference in performance.</p>
+<div id="outline-21" class="section level3 unnumbered">
+<h3>Outline<a class="anchor" aria-label="anchor" href="#outline-21"><i class="fas fa-link"></i></a>
+</h3>
+<ul>
+<li><p>Section <a href="perf-measure.html#profiling">23.2</a> shows you how to use profiling tools to dig into
+exactly what is making code slow.</p></li>
+<li><p>Section <a href="perf-measure.html#microbenchmarking">23.3</a> shows how to use microbenchmarking to
+explore alternative implementations and figure out exactly which one is
+fastest.</p></li>
+</ul>
+</div>
+<div id="prerequisites-15" class="section level3 unnumbered">
+<h3>Prerequisites<a class="anchor" aria-label="anchor" href="#prerequisites-15"><i class="fas fa-link"></i></a>
+</h3>
+<p>We’ll use <a href="https://rstudio.github.io/profvis/">profvis</a> for profiling, and <a href="https://bench.r-lib.org/">bench</a> for microbenchmarking.</p>
+<div class="sourceCode" id="cb967"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://profvis.r-lib.org">profvis</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://bench.r-lib.org/">bench</a></span><span class="op">)</span></span></code></pre></div>
+</div>
+</div>
+<div id="profiling" class="section level2" number="23.2">
+<h2>
+<span class="header-section-number">23.2</span> Profiling<a class="anchor" aria-label="anchor" href="#profiling"><i class="fas fa-link"></i></a>
+</h2>
+<p>
+</p>
+<p>Across programming languages, the primary tool used to understand code performance is the profiler. There are a number of different types of profilers, but R uses a fairly simple type called a sampling or statistical profiler. A sampling profiler stops the execution of code every few milliseconds and records the call stack (i.e. which function is currently executing, and the function that called the function, and so on). For example, consider <code>f()</code>, below:</p>
+<div class="sourceCode" id="cb968"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://profvis.r-lib.org/reference/pause.html">pause</a></span><span class="op">(</span><span class="fl">0.1</span><span class="op">)</span></span>
+<span>  <span class="fu">g</span><span class="op">(</span><span class="op">)</span></span>
+<span>  <span class="fu">h</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span><span class="va">g</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://profvis.r-lib.org/reference/pause.html">pause</a></span><span class="op">(</span><span class="fl">0.1</span><span class="op">)</span></span>
+<span>  <span class="fu">h</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span><span class="va">h</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://profvis.r-lib.org/reference/pause.html">pause</a></span><span class="op">(</span><span class="fl">0.1</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<p>(I use <code><a href="https://profvis.r-lib.org/reference/pause.html">profvis::pause()</a></code> instead of <code><a href="https://rdrr.io/r/base/Sys.sleep.html">Sys.sleep()</a></code> because <code><a href="https://rdrr.io/r/base/Sys.sleep.html">Sys.sleep()</a></code> does not appear in profiling outputs because as far as R can tell, it doesn’t use up any computing time.) </p>
+<p>If we profiled the execution of <code>f()</code>, stopping the execution of code every 0.1 s, we’d see a profile like this:</p>
+<div class="sourceCode" id="cb969"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb969-1"><a href="perf-measure.html#cb969-1" tabindex="-1"></a><span class="st">"pause"</span> <span class="st">"f"</span> </span>
+<span id="cb969-2"><a href="perf-measure.html#cb969-2" tabindex="-1"></a><span class="st">"pause"</span> <span class="st">"g"</span> <span class="st">"f"</span></span>
+<span id="cb969-3"><a href="perf-measure.html#cb969-3" tabindex="-1"></a><span class="st">"pause"</span> <span class="st">"h"</span> <span class="st">"g"</span> <span class="st">"f"</span></span>
+<span id="cb969-4"><a href="perf-measure.html#cb969-4" tabindex="-1"></a><span class="st">"pause"</span> <span class="st">"h"</span> <span class="st">"f"</span></span></code></pre></div>
+<p>Each line represents one “tick” of the profiler (0.1 s in this case), and function calls are recorded from right to left: the first line shows <code>f()</code> calling <code><a href="https://profvis.r-lib.org/reference/pause.html">pause()</a></code>. It shows that the code spends 0.1 s running <code>f()</code>, then 0.2 s running <code>g()</code>, then 0.1 s running <code>h()</code>.</p>
+<p>If we actually profile <code>f()</code>, using <code><a href="https://rdrr.io/r/utils/Rprof.html">utils::Rprof()</a></code> as in the code below, we’re unlikely to get such a clear result.</p>
+<div class="sourceCode" id="cb970"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">tmp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html">tempfile</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/Rprof.html">Rprof</a></span><span class="op">(</span><span class="va">tmp</span>, interval <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span></span>
+<span><span class="fu">f</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/Rprof.html">Rprof</a></span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/writeLines.html">writeLines</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html">readLines</a></span><span class="op">(</span><span class="va">tmp</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; sample.interval=100000</span></span>
+<span><span class="co">#&gt; "pause" "g" "f" </span></span>
+<span><span class="co">#&gt; "pause" "h" "g" "f" </span></span>
+<span><span class="co">#&gt; "pause" "h" "f" </span></span></code></pre></div>
+<p>That’s because all profilers must make a fundamental trade-off between accuracy and performance. The compromise that makes, using a sampling profiler, only has minimal impact on performance, but is fundamentally stochastic because there’s some variability in both the accuracy of the timer and in the time taken by each operation. That means each time that you profile you’ll get a slightly different answer. Fortunately, the variability most affects functions that take very little time to run, which are also the functions of least interest.</p>
+<div id="visualising-profiles" class="section level3" number="23.2.1">
+<h3>
+<span class="header-section-number">23.2.1</span> Visualising profiles<a class="anchor" aria-label="anchor" href="#visualising-profiles"><i class="fas fa-link"></i></a>
+</h3>
+<p>The default profiling resolution is quite small, so if your function takes even a few seconds it will generate hundreds of samples. That quickly grows beyond our ability to look at directly, so instead of using <code><a href="https://rdrr.io/r/utils/Rprof.html">utils::Rprof()</a></code> we’ll use the profvis package to visualise aggregates. profvis also connects profiling data back to the underlying source code, making it easier to build up a mental model of what you need to change. If you find profvis doesn’t help for your code, you might try one of the other options like <code><a href="https://rdrr.io/r/utils/summaryRprof.html">utils::summaryRprof()</a></code> or the proftools package.<span class="citation"><a class="footnote-ref" tabindex="0" data-toggle="popover" data-content='&lt;p&gt;Luke Tierney and Riad Jarjour, &lt;em&gt;Proftools: Profile Output Processing Tools for &lt;span&gt;R&lt;/span&gt;&lt;/em&gt;, 2016, &lt;a href="https://CRAN.R-project.org/package=proftools"&gt;https://CRAN.R-project.org/package=proftools&lt;/a&gt;.&lt;/p&gt;'><sup>111</sup></a></span></p>
+<p>There are two ways to use profvis:</p>
+<ul>
+<li><p>From the Profile menu in RStudio.</p></li>
+<li>
+<p>With <code><a href="https://profvis.r-lib.org/reference/profvis.html">profvis::profvis()</a></code>. I recommend storing your code in a separate
+file and <code><a href="https://rdrr.io/r/base/source.html">source()</a></code>ing it in; this will ensure you get the best connection
+between profiling data and source code.</p>
+<div class="sourceCode" id="cb971"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/source.html">source</a></span><span class="op">(</span><span class="st">"profiling-example.R"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://profvis.r-lib.org/reference/profvis.html">profvis</a></span><span class="op">(</span><span class="fu">f</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+</li>
+</ul>
+<p>After profiling is complete, profvis will open an interactive HTML document that allows you to explore the results. There are two panes, as shown in Figure <a href="perf-measure.html#fig:flamegraph">23.1</a>.</p>
+<div class="figure" style="text-align: center">
+<span style="display:block;" id="fig:flamegraph"></span>
+<img src="screenshots/performance/flamegraph.png" alt="profvis output showing source on top and flame graph below." width="100%"><p class="caption">
+Figure 23.1: profvis output showing source on top and flame graph below.
+</p>
+</div>
+<p>The top pane shows the source code, overlaid with bar graphs for memory and execution time for each line of code. Here I’ll focus on time, and we’ll come back to memory shortly. This display gives you a good overall feel for the bottlenecks but doesn’t always help you precisely identify the cause. Here, for example, you can see that <code>h()</code> takes 150 ms, twice as long as <code>g()</code>; that’s not because the function is slower, but because it’s called twice as often.</p>
+<p>The bottom pane displays a <strong>flame graph</strong> showing the full call stack. This allows you to see the full sequence of calls leading to each function, allowing you to see that <code>h()</code> is called from two different places. In this display you can mouse over individual calls to get more information, and see the corresponding line of source code, as in Figure <a href="perf-measure.html#fig:perf-info">23.2</a>.</p>
+<div class="figure" style="text-align: center">
+<span style="display:block;" id="fig:perf-info"></span>
+<img src="screenshots/performance/info.png" alt="Hovering over a call in the flamegraph highlights the corresponding line of code, and displays additional information about performance." width="100%"><p class="caption">
+Figure 23.2: Hovering over a call in the flamegraph highlights the corresponding line of code, and displays additional information about performance.
+</p>
+</div>
+<p>Alternatively, you can use the <strong>data tab</strong>, Figure <a href="perf-measure.html#fig:perf-tree">23.3</a> lets you interactively dive into the tree of performance data. This is basically the same display as the flame graph (rotated 90 degrees), but it’s more useful when you have very large or deeply nested call stacks because you can choose to interactively zoom into only selected components.</p>
+<div class="figure" style="text-align: center">
+<span style="display:block;" id="fig:perf-tree"></span>
+<img src="screenshots/performance/tree.png" alt="The data gives an interactive tree that allows you to selectively zoom into key components" width="100%"><p class="caption">
+Figure 23.3: The data gives an interactive tree that allows you to selectively zoom into key components
+</p>
+</div>
+</div>
+<div id="memory-profiling" class="section level3" number="23.2.2">
+<h3>
+<span class="header-section-number">23.2.2</span> Memory profiling<a class="anchor" aria-label="anchor" href="#memory-profiling"><i class="fas fa-link"></i></a>
+</h3>
+<p>
+</p>
+<p>There is a special entry in the flame graph that doesn’t correspond to your code: <code>&lt;GC&gt;</code>, which indicates that the garbage collector is running. If <code>&lt;GC&gt;</code> is taking a lot of time, it’s usually an indication that you’re creating many short-lived objects. For example, take this small snippet of code:</p>
+<div class="sourceCode" id="cb972"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html">integer</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="fl">1e4</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">i</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<p>If you profile it, you’ll see that most of the time is spent in the garbage collector, Figure <a href="perf-measure.html#fig:perf-memory">23.4</a>.</p>
+<div class="figure" style="text-align: center">
+<span style="display:block;" id="fig:perf-memory"></span>
+<img src="screenshots/performance/memory.png" alt="Profiling a loop that modifies an existing variable reveals that most time is spent in the garbage collector (&lt;GC&gt;)." width="100%"><p class="caption">
+Figure 23.4: Profiling a loop that modifies an existing variable reveals that most time is spent in the garbage collector (<gc>).
+</gc></p>
+</div>
+<p>When you see the garbage collector taking up a lot of time in your own code, you can often figure out the source of the problem by looking at the memory column: you’ll see a line where large amounts of memory are being allocated (the bar on the right) and freed (the bar on the left). Here the problem arises because of copy-on-modify (Section <a href="names-values.html#copy-on-modify">2.3</a>): each iteration of the loop creates another copy of <code>x</code>. You’ll learn strategies to resolve this type of problem in Section <a href="perf-improve.html#avoid-copies">24.6</a>.</p>
+</div>
+<div id="limitations" class="section level3" number="23.2.3">
+<h3>
+<span class="header-section-number">23.2.3</span> Limitations<a class="anchor" aria-label="anchor" href="#limitations"><i class="fas fa-link"></i></a>
+</h3>
+<p></p>
+<p>There are some other limitations to profiling:</p>
+<ul>
+<li><p>Profiling does not extend to C code. You can see if your R code calls C/C++
+code but not what functions are called inside of your C/C++ code.
+Unfortunately, tools for profiling compiled code are beyond the scope of
+this book; start by looking at <a href="https://github.com/r-prof/jointprof" class="uri">https://github.com/r-prof/jointprof</a>.</p></li>
+<li><p>If you’re doing a lot of functional programming with anonymous functions,
+it can be hard to figure out exactly which function is being called.
+The easiest way to work around this is to name your functions.</p></li>
+<li>
+<p>Lazy evaluation means that arguments are often evaluated inside another
+function, and this complicates the call stack (Section
+<a href="environments.html#lazy-call-stack">7.5.2</a>). Unfortunately R’s profiler doesn’t store enough
+information to disentangle lazy evaluation so that in the following code,
+profiling would make it seem like <code>i()</code> was called by <code>j()</code> because the
+argument isn’t evaluated until it’s needed by <code>j()</code>.</p>
+<div class="sourceCode" id="cb973"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">i</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://profvis.r-lib.org/reference/pause.html">pause</a></span><span class="op">(</span><span class="fl">0.1</span><span class="op">)</span></span>
+<span>  <span class="fl">10</span></span>
+<span><span class="op">}</span></span>
+<span><span class="va">j</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">x</span> <span class="op">+</span> <span class="fl">10</span></span>
+<span><span class="op">}</span></span>
+<span><span class="fu">j</span><span class="op">(</span><span class="fu">i</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>If this is confusing, use <code><a href="https://rdrr.io/r/base/force.html">force()</a></code> (Section <a href="function-factories.html#forcing-evaluation">10.2.3</a>) to
+force computation to happen earlier.</p>
+</li>
+</ul>
+</div>
+<div id="exercises-68" class="section level3" number="23.2.4">
+<h3>
+<span class="header-section-number">23.2.4</span> Exercises<a class="anchor" aria-label="anchor" href="#exercises-68"><i class="fas fa-link"></i></a>
+</h3>
+<!-- The explanation of `torture = TRUE` was removed in https://github.com/hadley/adv-r/commit/ea63f1e48fb523c013fb3df1860b7e0c227e1512 -->
+<ol style="list-style-type: decimal">
+<li>
+<p>Profile the following function with <code>torture = 10</code>. What is
+surprising? Read the source code of <code><a href="https://rdrr.io/r/base/rm.html">rm()</a></code> to figure out what’s going on.</p>
+<div class="sourceCode" id="cb974"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">n</span> <span class="op">=</span> <span class="fl">1e5</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html">rep</a></span><span class="op">(</span><span class="fl">1</span>, <span class="va">n</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/rm.html">rm</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+</li>
+</ol>
+</div>
+</div>
+<div id="microbenchmarking" class="section level2" number="23.3">
+<h2>
+<span class="header-section-number">23.3</span> Microbenchmarking<a class="anchor" aria-label="anchor" href="#microbenchmarking"><i class="fas fa-link"></i></a>
+</h2>
+<p>
+</p>
+<p>A <strong>microbenchmark</strong> is a measurement of the performance of a very small piece of code, something that might take milliseconds (ms), microseconds (µs), or nanoseconds (ns) to run. Microbenchmarks are useful for comparing small snippets of code for specific tasks. Be very wary of generalising the results of microbenchmarks to real code: the observed differences in microbenchmarks will typically be dominated by higher-order effects in real code; a deep understanding of subatomic physics is not very helpful when baking.</p>
+<p>A great tool for microbenchmarking in R is the bench package.<span class="citation"><a class="footnote-ref" tabindex="0" data-toggle="popover" data-content="&lt;p&gt;Hester, &lt;em&gt;Bench&lt;/em&gt;.&lt;/p&gt;"><sup>112</sup></a></span> The bench package uses a high precision timer, making it possible to compare operations that only take a tiny amount of time. For example, the following code compares the speed of two approaches to computing a square root.</p>
+<div class="sourceCode" id="cb975"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Uniform.html">runif</a></span><span class="op">(</span><span class="fl">100</span><span class="op">)</span></span>
+<span><span class="op">(</span><span class="va">lb</span> <span class="op">&lt;-</span> <span class="fu">bench</span><span class="fu">::</span><span class="fu"><a href="https://bench.r-lib.org/reference/mark.html">mark</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html">sqrt</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>,</span>
+<span>  <span class="va">x</span> <span class="op">^</span> <span class="fl">0.5</span></span>
+<span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; # A tibble: 2 × 6</span></span>
+<span><span class="co">#&gt;   expression      min   median `itr/sec` mem_alloc `gc/sec`</span></span>
+<span><span class="co">#&gt;   &lt;bch:expr&gt; &lt;bch:tm&gt; &lt;bch:tm&gt;     &lt;dbl&gt; &lt;bch:byt&gt;    &lt;dbl&gt;</span></span>
+<span><span class="co">#&gt; 1 sqrt(x)       370ns 400.93ns  2402652.      848B        0</span></span>
+<span><span class="co">#&gt; 2 x^0.5         1.9µs   1.95µs   498594.      848B        0</span></span></code></pre></div>
+<p>By default, <code><a href="https://bench.r-lib.org/reference/mark.html">bench::mark()</a></code> runs each expression at least once (<code>min_iterations = 1</code>), and at most enough times to take 0.5 s (<code>min_time = 0.5</code>). It checks that each run returns the same value which is typically what you want microbenchmarking; if you want to compare the speed of expressions that return different values, set <code>check = FALSE</code>.</p>
+<div id="benchmark-results" class="section level3" number="23.3.1">
+<h3>
+<span class="header-section-number">23.3.1</span> <code>bench::mark()</code> results<a class="anchor" aria-label="anchor" href="#benchmark-results"><i class="fas fa-link"></i></a>
+</h3>
+<p><code><a href="https://bench.r-lib.org/reference/mark.html">bench::mark()</a></code> returns the results as a tibble, with one row for each input expression, and the following columns:</p>
+<ul>
+<li>
+<p><code>min</code>, <code>mean</code>, <code>median</code>, <code>max</code>, and <code>itr/sec</code> summarise the time taken by the
+expression. Focus on the minimum (the best possible running time) and the
+median (the typical time). In this example, you can see that using the
+special purpose <code><a href="https://rdrr.io/r/base/MathFun.html">sqrt()</a></code> function is faster than the general exponentiation
+operator.</p>
+<p>You can visualise the distribution of the individual timings with <code><a href="https://rdrr.io/r/graphics/plot.default.html">plot()</a></code>:</p>
+<div class="sourceCode" id="cb976"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">lb</span><span class="op">)</span></span></code></pre></div>
+<div class="inline-figure"><img src="Perf-measure_files/figure-html/unnamed-chunk-9-1.png" width="70%" style="display: block; margin: auto;"></div>
+<p>The distribution tends to be heavily right-skewed (note that the x-axis is
+already on a log scale!), which is why you should avoid comparing means.
+You’ll also often see multimodality because your computer is running
+something else in the background.</p>
+</li>
+<li><p><code>mem_alloc</code> tells you the amount of memory allocated by the first run,
+and <code>n_gc()</code> tells you the total number of garbage collections over all
+runs. These are useful for assessing the memory usage of the expression.</p></li>
+<li><p><code>n_itr</code> and <code>total_time</code> tells you how many times the expression was
+evaluated and how long that took in total. <code>n_itr</code> will always be
+greater than the <code>min_iteration</code> parameter, and <code>total_time</code> will always
+be greater than the <code>min_time</code> parameter.</p></li>
+<li><p><code>result</code>, <code>memory</code>, <code>time</code>, and <code>gc</code> are list-columns that store the
+raw underlying data.</p></li>
+</ul>
+<p>Because the result is a special type of tibble, you can use <code>[</code> to select just the most important columns. I’ll do that frequently in the next chapter.</p>
+<div class="sourceCode" id="cb977"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">lb</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"expression"</span>, <span class="st">"min"</span>, <span class="st">"median"</span>, <span class="st">"itr/sec"</span>, <span class="st">"n_gc"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="co">#&gt; # A tibble: 2 × 4</span></span>
+<span><span class="co">#&gt;   expression      min   median `itr/sec`</span></span>
+<span><span class="co">#&gt;   &lt;bch:expr&gt; &lt;bch:tm&gt; &lt;bch:tm&gt;     &lt;dbl&gt;</span></span>
+<span><span class="co">#&gt; 1 sqrt(x)       370ns 400.93ns  2402652.</span></span>
+<span><span class="co">#&gt; 2 x^0.5         1.9µs   1.95µs   498594.</span></span></code></pre></div>
+</div>
+<div id="interpreting-results" class="section level3" number="23.3.2">
+<h3>
+<span class="header-section-number">23.3.2</span> Interpreting results<a class="anchor" aria-label="anchor" href="#interpreting-results"><i class="fas fa-link"></i></a>
+</h3>
+<p>As with all microbenchmarks, pay careful attention to the units: here, each computation takes about 370 ns, 370 billionths of a second. To help calibrate the impact of a microbenchmark on run time, it’s useful to think about how many times a function needs to run before it takes a second. If a microbenchmark takes:</p>
+<ul>
+<li>1 ms, then one thousand calls take a second.</li>
+<li>1 µs, then one million calls take a second.</li>
+<li>1 ns, then one billion calls take a second.</li>
+</ul>
+<p>The <code><a href="https://rdrr.io/r/base/MathFun.html">sqrt()</a></code> function takes about 370 ns, or 0.37 µs, to compute the square roots of 100 numbers. That means if you repeated the operation a million times, it would take 0.37 s, and hence changing the way you compute the square root is unlikely to significantly affect real code. This is the reason you need to exercise care when generalising microbenchmarking results.</p>
+</div>
+<div id="exercises-69" class="section level3" number="23.3.3">
+<h3>
+<span class="header-section-number">23.3.3</span> Exercises<a class="anchor" aria-label="anchor" href="#exercises-69"><i class="fas fa-link"></i></a>
+</h3>
+<ol style="list-style-type: decimal">
+<li>
+<p>Instead of using <code><a href="https://bench.r-lib.org/reference/mark.html">bench::mark()</a></code>, you could use the built-in function
+<code><a href="https://rdrr.io/r/base/system.time.html">system.time()</a></code>. But <code><a href="https://rdrr.io/r/base/system.time.html">system.time()</a></code> is much less precise, so you’ll
+need to repeat each operation many times with a loop, and then divide
+to find the average time of each operation, as in the code below.</p>
+<div class="sourceCode" id="cb978"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">n</span> <span class="op">&lt;-</span> <span class="fl">1e6</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="va">n</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html">sqrt</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span> <span class="op">/</span> <span class="va">n</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="va">n</span><span class="op">)</span> <span class="va">x</span> <span class="op">^</span> <span class="fl">0.5</span><span class="op">)</span> <span class="op">/</span> <span class="va">n</span></span></code></pre></div>
+<p>How do the estimates from <code><a href="https://rdrr.io/r/base/system.time.html">system.time()</a></code> compare to those from
+<code><a href="https://bench.r-lib.org/reference/mark.html">bench::mark()</a></code>? Why are they different?</p>
+</li>
+<li>
+<p>Here are two other ways to compute the square root of a vector. Which
+do you think will be fastest? Which will be slowest? Use microbenchmarking
+to test your answers.</p>
+<div class="sourceCode" id="cb979"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">x</span> <span class="op">^</span> <span class="op">(</span><span class="fl">1</span> <span class="op">/</span> <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Log.html">exp</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html">log</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">/</span> <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
+</li>
+</ol>
+</div>
+</div>
+</div>
+
+  <div class="chapter-nav">
+<div class="prev"><a href="debugging.html"><span class="header-section-number">22</span> Debugging</a></div>
+<div class="next"><a href="perf-improve.html"><span class="header-section-number">24</span> Improving performance</a></div>
+</div></main><div class="col-md-3 col-lg-2 d-none d-md-block sidebar sidebar-chapter">
+    <nav id="toc" data-toggle="toc" aria-label="On this page"><h2>On this page</h2>
+      <ul class="nav navbar-nav">
+<li><a class="nav-link" href="#perf-measure"><span class="header-section-number">23</span> Measuring performance</a></li>
+<li>
+<a class="nav-link" href="#introduction-22"><span class="header-section-number">23.1</span> Introduction</a><ul class="nav navbar-nav">
+<li><a class="nav-link" href="#outline-21">Outline</a></li>
+<li><a class="nav-link" href="#prerequisites-15">Prerequisites</a></li>
+</ul>
+</li>
+<li>
+<a class="nav-link" href="#profiling"><span class="header-section-number">23.2</span> Profiling</a><ul class="nav navbar-nav">
+<li><a class="nav-link" href="#visualising-profiles"><span class="header-section-number">23.2.1</span> Visualising profiles</a></li>
+<li><a class="nav-link" href="#memory-profiling"><span class="header-section-number">23.2.2</span> Memory profiling</a></li>
+<li><a class="nav-link" href="#limitations"><span class="header-section-number">23.2.3</span> Limitations</a></li>
+<li><a class="nav-link" href="#exercises-68"><span class="header-section-number">23.2.4</span> Exercises</a></li>
+</ul>
+</li>
+<li>
+<a class="nav-link" href="#microbenchmarking"><span class="header-section-number">23.3</span> Microbenchmarking</a><ul class="nav navbar-nav">
+<li><a class="nav-link" href="#benchmark-results"><span class="header-section-number">23.3.1</span> bench::mark() results</a></li>
+<li><a class="nav-link" href="#interpreting-results"><span class="header-section-number">23.3.2</span> Interpreting results</a></li>
+<li><a class="nav-link" href="#exercises-69"><span class="header-section-number">23.3.3</span> Exercises</a></li>
+</ul>
+</li>
+</ul>
+
+      <div class="book-extra">
+        <ul class="list-unstyled">
+<li><a id="book-source" href="https://github.com/hadley/adv-r/blob/master/Perf-measure.Rmd">View source <i class="fab fa-github"></i></a></li>
+          <li><a id="book-edit" href="https://github.com/hadley/adv-r/edit/master/Perf-measure.Rmd">Edit this page <i class="fab fa-github"></i></a></li>
+        </ul>
+</div>
+    </nav>
+</div>
+
+</div>
+</div> <!-- .container -->
+
+<footer class="bg-primary text-light mt-5"><div class="container"><div class="row">
+
+  <div class="col-12 col-md-6 mt-3">
+    <p>"<strong>Advanced R</strong>" was written by Hadley Wickham. </p>
+  </div>
+
+  <div class="col-12 col-md-6 mt-3">
+    <p>This book was built by the <a class="text-light" href="https://bookdown.org">bookdown</a> R package.</p>
+  </div>
+
+</div></div>
+</footer><!-- dynamically load mathjax for compatibility with self-contained --><script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    var src = "true";
+    if (src === "" || src === "true") src = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/latest.js?config=TeX-MML-AM_CHTML";
+    if (location.protocol !== "file:")
+      if (/^https?:/.test(src))
+        src = src.replace(/^https?:/, '');
+    script.src = src;
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script><script type="text/x-mathjax-config">const popovers = document.querySelectorAll('a.footnote-ref[data-toggle="popover"]');
+for (let popover of popovers) {
+  const div = document.createElement('div');
+  div.setAttribute('style', 'position: absolute; top: 0, left:0; width:0, height:0, overflow: hidden; visibility: hidden;');
+  div.innerHTML = popover.getAttribute('data-content');
+
+  var has_math = div.querySelector("span.math");
+  if (has_math) {
+    document.body.appendChild(div);
+    MathJax.Hub.Queue(["Typeset", MathJax.Hub, div]);
+    MathJax.Hub.Queue(function() {
+      popover.setAttribute('data-content', div.innerHTML);
+      document.body.removeChild(div);
+    })
+  }
+}
+</script>
+</body>
+</html>
