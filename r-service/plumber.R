@@ -21,14 +21,17 @@ function(res) {
 
 #* @post /execute
 #* @serializer unboxedJSON
-#* @param session_id The unique session ID
-#* @param code The R code to execute
-#* @param persist_bucket The GCS bucket name for state persistence
-function(session_id, code, persist_bucket) {
-  # Authenticate using the Cloud Run service account metadata
+function(session_id = "anonymous", code = "", persist_bucket = "air-mvp-lennon-li-2026-storage") {
+  # Handle missing or null inputs from JSON
+  if (is.null(session_id) || session_id == "") session_id <- "anonymous"
+  if (is.null(persist_bucket) || persist_bucket == "") persist_bucket <- "air-mvp-lennon-li-2026-storage"
+  if (is.null(code)) code <- ""
+
+  # Authenticate and set region
   if (!googleAuthR::gar_has_token()) {
     googleAuthR::gar_gce_auth()
   }
+  Sys.setenv(GCS_DEFAULT_REGION = "us-central1")
 
   initial_search_path <- search()
   target_env <- new.env()
@@ -38,23 +41,17 @@ function(session_id, code, persist_bucket) {
   # Restore State from GCS
   has_state <- FALSE
   tryCatch({
-    # Only download if we don't have a local warm cache (optional future optimization)
     gcs_get_object(gcs_state_path, bucket = persist_bucket, saveToDisk = local_state_path, overwrite = TRUE)
     if (file.exists(local_state_path)) {
         load(local_state_path, envir = target_env)
         has_state <- TRUE
     }
-  }, error = function(e) { 
-    # Not an error if it's a new session
-  })
+  }, error = function(e) { })
 
-  # Initialize or retrieve plot history from the target environment
   if (!exists(".air_plot_history", envir = target_env)) {
       assign(".air_plot_history", list(), envir = target_env)
   }
   plot_history <- get(".air_plot_history", envir = target_env)
-
-  # Capture initial object names to detect changes
   initial_objs <- ls(all.names = TRUE, envir = target_env)
   
   tmp_plot <- tempfile(fileext = ".png")
@@ -62,10 +59,12 @@ function(session_id, code, persist_bucket) {
   
   stdout <- capture.output({
     result <- tryCatch({
-      exprs <- parse(text = code)
-      for (i in seq_along(exprs)) {
-        visible_res <- withVisible(eval(exprs[i], envir = target_env))
-        if (visible_res$visible) print(visible_res$value)
+      if (nchar(trimws(code)) > 0) {
+        exprs <- parse(text = code)
+        for (i in seq_along(exprs)) {
+          visible_res <- withVisible(eval(exprs[i], envir = target_env))
+          if (visible_res$visible) print(visible_res$value)
+        }
       }
       "success"
     }, error = function(e) {
@@ -75,28 +74,26 @@ function(session_id, code, persist_bucket) {
   
   dev.off()
 
-  # Cleanup search path contamination (detach new libraries)
   current_search_path <- search()
   new_pkgs <- setdiff(current_search_path, initial_search_path)
   for (pkg in new_pkgs) {
     if (grepl("^package:", pkg)) try(detach(pkg, character.only = TRUE, force = TRUE), silent = TRUE)
   }
 
-  # Artifacts and Persistence
   gcs_plot_path <- NULL
+  plot_url <- ""
   if (file.exists(tmp_plot) && file.info(tmp_plot)$size > 3000) {
     rand_id <- basename(tempfile(pattern=""))
     plot_name <- paste0("plot_", format(Sys.time(), "%Y%m%d_%H%M%OS6"), "_", rand_id, ".png")
     gcs_plot_path <- paste0("sessions/", session_id, "/artifacts/", plot_name)
     gcs_upload(tmp_plot, bucket = persist_bucket, name = gcs_plot_path)
     
-    # Update history
+    plot_url <- paste0("https://storage.googleapis.com/", persist_bucket, "/", gcs_plot_path)
     plot_history <- c(gcs_plot_path, plot_history)
     assign(".air_plot_history", plot_history, envir = target_env)
   }
   if (file.exists(tmp_plot)) unlink(tmp_plot)
 
-  # Check for changes before saving back to GCS (Speed optimization)
   final_objs <- ls(all.names = TRUE, envir = target_env)
   changed <- !identical(initial_objs, final_objs)
   
@@ -111,20 +108,14 @@ function(session_id, code, persist_bucket) {
   
   if (file.exists(local_state_path)) unlink(local_state_path)
 
-  objs <- ls(envir = target_env)
-  # Filter out internal tracking objects from the environment list
-  objs <- objs[!grepl("^\\.air_", objs)]
-  
-  obj_list <- lapply(objs, function(name) {
-    obj <- get(name, envir = target_env)
-    list(name = name, type = class(obj)[1], details = if(is.data.frame(obj)) paste(nrow(obj), "rows") else "object")
-  })
+  # Consolidate output
+  output_text <- paste(stdout, collapse = "\n")
+  if (grepl("^Error:", result)) {
+    output_text <- paste0(output_text, "\n", result)
+  }
 
   list(
-    status = if(grepl("^Error:", result)) "error" else "success",
-    error = if(grepl("^Error:", result)) result else NULL,
-    stdout = paste(stdout, collapse = "\n"),
-    plots = if(length(plot_history) > 0) as.list(plot_history) else list(),
-    environment = obj_list
+    output = output_text,
+    plot_url = plot_url
   )
 }
