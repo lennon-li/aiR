@@ -61,7 +61,16 @@ PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT", "air-mvp-lennon-li-2026")
 LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "global")
 SESSION_BUCKET = os.getenv("SESSION_BUCKET", f"{PROJECT_ID}-sessions")
 R_RUNTIME_URL = os.getenv("R_RUNTIME_URL")
-API_SECRET = os.getenv("API_SECRET", "default-dev-secret")
+API_SECRET = os.getenv("API_SECRET")
+
+# Fail-fast for production auth security
+if PROJECT_ID == "air-mvp-lennon-li-2026": # Production project ID
+    if not API_SECRET or API_SECRET == "default-dev-secret":
+        print("CRITICAL: API_SECRET is missing or using default in production! Shutting down.")
+        import sys
+        sys.exit(1)
+elif not API_SECRET:
+    API_SECRET = "default-dev-secret"
 
 # Dialogflow CX / Conversation Agent Config
 AGENT_ID = os.getenv("CONVERSATION_AGENT_ID", "1e9ad1e9-30bb-45ad-98e1-16714da84164")
@@ -141,14 +150,29 @@ def extract_r_code(text: str, strict: bool = False) -> str:
 
 def validate_session_token(token: str) -> dict:
     try:
+        if not token or "." not in token:
+            print(f"DEBUG: Token missing or malformed: '{token[:10]}...'")
+            raise ValueError("Malformed token")
+        
         payload_b64, signature = token.rsplit(".", 1)
-        expected = hmac.new(API_SECRET.encode(), payload_b64.encode(), hashlib.sha256).hexdigest()[:16]
-        if not hmac.compare_digest(signature, expected): raise ValueError()
-        return json.loads(base64.urlsafe_b64decode(payload_b64).decode())
-    except: raise HTTPException(status_code=403, detail="Invalid token")
+        # Strip padding for consistent signature check
+        payload_unpadded = payload_b64.rstrip('=')
+        expected = hmac.new(API_SECRET.encode(), payload_unpadded.encode(), hashlib.sha256).hexdigest()[:16]
+        
+        if not hmac.compare_digest(signature, expected):
+            print(f"DEBUG: Signature mismatch. Secret prefix: {API_SECRET[:4]}, Expected: {expected}, Got: {signature}")
+            raise ValueError("Signature mismatch")
+            
+        # Re-add padding for decoding if needed
+        padding_needed = (4 - len(payload_unpadded) % 4) % 4
+        decoded = base64.urlsafe_b64decode(payload_unpadded + '=' * padding_needed).decode()
+        return json.loads(decoded)
+    except Exception as e:
+        print(f"DEBUG: Token validation failed: {str(e)}")
+        raise HTTPException(status_code=403, detail="Invalid token")
 
 def sign_session_data(data: dict) -> str:
-    payload = base64.urlsafe_b64encode(json.dumps(data).encode()).decode()
+    payload = base64.urlsafe_b64encode(json.dumps(data).encode()).decode().rstrip('=')
     signature = hmac.new(API_SECRET.encode(), payload.encode(), hashlib.sha256).hexdigest()[:16]
     return f"{payload}.{signature}"
 
@@ -234,7 +258,9 @@ async def agent_chat(request: AgentChatRequest):
     agent_context.update({
         "analysis_mode": analysis_mode,
         "objective": objective,
-        "core_mandate": CORE_MANDATE
+        "core_mandate": CORE_MANDATE,
+        "instruction": CORE_MANDATE,
+        "system_instruction": CORE_MANDATE
     })
     
     if last_result:
@@ -298,24 +324,38 @@ async def agent_chat(request: AgentChatRequest):
             )
             response = do_detect(fallback_input)
             
-        # 8. Extract response text
+        # 8. Extract response text - DEEP EXTRACTION
+        # First, try to get anything from the standard text response fields
         messages = response.query_result.response_messages
         reply_text = ""
         for msg in messages:
-            if msg.text:
+            if hasattr(msg, "text") and msg.text and msg.text.text:
                 reply_text += "\n".join(msg.text.text)
+            elif hasattr(msg, "payload") and msg.payload:
+                if "text" in msg.payload:
+                    reply_text += str(msg.payload["text"])
         
-        # Fallback for Playbook Generative Info
-        if not reply_text.strip() and hasattr(response.query_result, "generative_info"):
-            gen_info = response.query_result.generative_info
-            if gen_info and hasattr(gen_info, "action_tracing_info") and gen_info.action_tracing_info:
-                 # Some agents put it here
-                 pass
-            # Try to get the last raw output if available
-            # Note: The exact path depends on the proto version, usually it's in the text response 
-            # if the playbook 'output' is configured correctly.
-            # But in the logs we saw 'model_output'
+        # Second, check for generative info (Playbooks)
+        if not reply_text.strip():
+            gen_info = getattr(response.query_result, "generative_info", None)
+            if gen_info:
+                reply_text = getattr(gen_info, "model_output", "")
         
+        # Third, if we still don't have R code or text, scan the WHOLE response string representation.
+        # This is a robust "catch-all" for Playbook/Proto-nested content.
+        if not reply_text.strip() or "```r" not in reply_text:
+            full_resp_str = str(response)
+            # Find R code fences anywhere in the response dump
+            code_match = re.search(r"```r\n?([\s\S]*?)```", full_resp_str)
+            if code_match:
+                # If we found code but didn't have reply text, use the code block as the source
+                reply_text = code_match.group(0)
+            elif "model_output:" in full_resp_str:
+                # Pull the raw model output and unescape it
+                model_match = re.search(r'model_output:\s*"([\s\S]*?)"', full_resp_str)
+                if model_match:
+                    reply_text = model_match.group(1).replace('\\n', '\n').replace('\\"', '"')
+
         reply_text = reply_text.strip()
         
         # 9. Extract R Code - Strict extraction for autonomous mode

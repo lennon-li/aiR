@@ -1,7 +1,19 @@
 import os
 import requests
+import subprocess
 from google.oauth2 import id_token
 from google.auth.transport.requests import Request as GoogleAuthRequest
+
+def get_id_token(url):
+    """Retrieves an identity token, falling back to gcloud if needed."""
+    try:
+        return id_token.fetch_id_token(GoogleAuthRequest(), url)
+    except:
+        try:
+            # Fallback for local development
+            return subprocess.check_output(["gcloud", "auth", "print-identity-token", f"--audiences={url}"], text=True).strip()
+        except:
+            return None
 
 def execute_r_code_internal(code: str, session_id: str) -> dict:
     """
@@ -11,7 +23,10 @@ def execute_r_code_internal(code: str, session_id: str) -> dict:
     SESSION_BUCKET = os.getenv("SESSION_BUCKET", "air-mvp-lennon-li-2026-sessions")
     
     try:
-        token = id_token.fetch_id_token(GoogleAuthRequest(), R_RUNTIME_URL)
+        token = get_id_token(R_RUNTIME_URL)
+        if not token:
+            raise ValueError("Could not retrieve identity token for R service.")
+            
         r_payload = {"session_id": session_id, "code": code, "persist_bucket": SESSION_BUCKET}
         resp = requests.post(f"{R_RUNTIME_URL}/execute", json=r_payload, headers={"Authorization": f"Bearer {token}"}, timeout=120)
         

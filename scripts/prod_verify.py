@@ -1,10 +1,11 @@
+import os
 import requests
 import json
 import base64
 import subprocess
 import sys
 
-API_URL = "http://127.0.0.1:8000"
+API_URL = os.getenv("API_URL", "http://127.0.0.1:8000")
 
 def get_uuid(sid):
     payload_b64 = sid.split(".")[0]
