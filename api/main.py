@@ -151,7 +151,7 @@ def extract_r_code(text: str, strict: bool = False) -> str:
 def validate_session_token(token: str) -> dict:
     try:
         if not token or "." not in token:
-            print(f"DEBUG: Token missing or malformed: '{token[:10]}...'")
+            print(f"AUTH: token_present=False, failure_reason=missing_or_malformed")
             raise ValueError("Malformed token")
         
         payload_b64, signature = token.rsplit(".", 1)
@@ -160,7 +160,7 @@ def validate_session_token(token: str) -> dict:
         expected = hmac.new(API_SECRET.encode(), payload_unpadded.encode(), hashlib.sha256).hexdigest()[:16]
         
         if not hmac.compare_digest(signature, expected):
-            print(f"DEBUG: Signature mismatch. Secret prefix: {API_SECRET[:4]}, Expected: {expected}, Got: {signature}")
+            print(f"AUTH: token_present=True, token_parts_count=2, signature_match=False, failure_reason=signature_mismatch")
             raise ValueError("Signature mismatch")
             
         # Re-add padding for decoding if needed
@@ -168,7 +168,7 @@ def validate_session_token(token: str) -> dict:
         decoded = base64.urlsafe_b64decode(payload_unpadded + '=' * padding_needed).decode()
         return json.loads(decoded)
     except Exception as e:
-        print(f"DEBUG: Token validation failed: {str(e)}")
+        print(f"AUTH: token_present=True, payload_decode_success=False, failure_reason={type(e).__name__}")
         raise HTTPException(status_code=403, detail="Invalid token")
 
 def sign_session_data(data: dict) -> str:
