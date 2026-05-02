@@ -21,7 +21,7 @@ function(res) {
 
 #* @post /execute
 #* @serializer unboxedJSON
-function(session_id = "anonymous", code = "", persist_bucket = "air-mvp-lennon-li-2026-storage") {
+function(session_id = "anonymous", code = "", persist_bucket = Sys.getenv("SESSION_BUCKET")) {
   # Handle missing or null inputs from JSON
   if (is.null(session_id) || session_id == "") session_id <- "anonymous"
   if (is.null(persist_bucket) || persist_bucket == "") persist_bucket <- "air-mvp-lennon-li-2026-storage"

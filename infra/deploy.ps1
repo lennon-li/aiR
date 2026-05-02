@@ -21,7 +21,7 @@ gcloud run deploy air-api `
   --allow-unauthenticated `
   --region $REGION `
   --project $PROJECT_ID `
-  --set-env-vars "R_RUNTIME_URL=$R_URL,SESSION_BUCKET=$BUCKET,DATA_STORE_ID=r-docs-curated,SEARCH_LOCATION=global,GOOGLE_CLOUD_PROJECT=$PROJECT_ID" `
+  --update-env-vars "R_RUNTIME_URL=$R_URL,SESSION_BUCKET=$BUCKET,DATA_STORE_ID=r-docs-curated,SEARCH_LOCATION=global,GOOGLE_CLOUD_PROJECT=$PROJECT_ID" `
   --quiet
 
 $API_URL = gcloud run services describe air-api --region $REGION --format="value(status.url)"
