@@ -375,7 +375,9 @@ async def agent_chat(request: AgentChatRequest):
     normalized_event = normalize_agent_event(request.event)
 
     # 2. Setup Dialogflow Client
-    client_options = ClientOptions(api_endpoint=f"{LOCATION}-dialogflow.googleapis.com")
+    client_options = None
+    if LOCATION != "global":
+        client_options = ClientOptions(api_endpoint=f"{LOCATION}-dialogflow.googleapis.com")
     client = dialogflow.SessionsClient(credentials=credentials, client_options=client_options)
     session_path = client.session_path(PROJECT_ID, LOCATION, AGENT_ID, session_uuid)
     
