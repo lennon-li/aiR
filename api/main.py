@@ -9,7 +9,8 @@ import json
 import re
 import time
 from datetime import timedelta
-from fastapi import FastAPI, HTTPException, Body
+from fastapi import FastAPI, HTTPException, Body, Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import Response, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -148,10 +149,31 @@ def extract_r_code(text: str, strict: bool = False) -> str:
             
     return ""
 
+def is_low_signal_reply(text: str) -> bool:
+    cleaned = (text or "").strip()
+    if not cleaned:
+        return True
+
+    lower = cleaned.lower()
+    if lower in {"...", "fdadf", "hi", "hello", "ok", "okay", "test"}:
+        return True
+
+    if len(cleaned) <= 8 and re.fullmatch(r"[a-zA-Z]+", cleaned):
+        return True
+
+    if re.fullmatch(r"```[Rr]?\s*(?:\.\.\.)?\s*```", cleaned):
+        return True
+
+    return False
+
+def is_placeholder_code(text: str) -> bool:
+    cleaned = (text or "").strip()
+    return cleaned in {"", "..."} or bool(re.fullmatch(r"[.`\s]+", cleaned))
+
 def validate_session_token(token: str) -> dict:
     try:
         token = (token or "").strip()
-        print(f"AUTH: secret_prefix={API_SECRET[:4] if API_SECRET else 'NONE'}")
+        print("AUTH: token_validation_called")
         if token.startswith('"') and token.endswith('"') and len(token) >= 2:
             token = token[1:-1]
         if not token:
@@ -177,6 +199,13 @@ def validate_session_token(token: str) -> dict:
     except Exception as e:
         print(f"AUTH: token_present=True, payload_decode_success=False, failure_reason={type(e).__name__}")
         raise HTTPException(status_code=403, detail="Invalid token")
+
+_bearer_scheme = HTTPBearer(auto_error=False)
+
+async def verify_api_secret(credentials: HTTPAuthorizationCredentials = Depends(_bearer_scheme)):
+    token = credentials.credentials if credentials else None
+    if not token or not hmac.compare_digest(token, API_SECRET):
+        raise HTTPException(status_code=401, detail="Unauthorized")
 
 def sign_session_data(data: dict) -> str:
     payload = base64.urlsafe_b64encode(json.dumps(data).encode()).decode().rstrip('=')
@@ -208,7 +237,7 @@ def classify_intent(message: str) -> str:
 
 # --- Routes ---
 @app.post("/v1/sessions")
-async def create_session(request: SessionCreate):
+async def create_session(request: SessionCreate, _: None = Depends(verify_api_secret)):
     with TelemetryTimer() as timer:
         session_uuid = str(uuid.uuid4())
         token_data = {
@@ -367,6 +396,14 @@ async def agent_chat(request: AgentChatRequest):
         
         # 9. Extract R Code - Strict extraction for autonomous mode
         extracted_code = extract_r_code(reply_text, strict=(analysis_mode == "autonomous"))
+        if is_placeholder_code(extracted_code):
+            extracted_code = ""
+
+        if is_low_signal_reply(reply_text) and not extracted_code:
+            if request.event == "playbookStart":
+                reply_text = "Ready. Ask for R code or describe the analysis you want to run."
+            else:
+                reply_text = "I can help with that. Ask for R code or describe the analysis step you want."
         
         # 10. Apply Execution Policy
         executed = False
