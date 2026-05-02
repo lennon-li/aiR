@@ -9,7 +9,8 @@ import json
 import re
 import time
 from datetime import timedelta
-from fastapi import FastAPI, HTTPException, Body
+from fastapi import FastAPI, HTTPException, Body, Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import Response, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -199,6 +200,13 @@ def validate_session_token(token: str) -> dict:
         print(f"AUTH: token_present=True, payload_decode_success=False, failure_reason={type(e).__name__}")
         raise HTTPException(status_code=403, detail="Invalid token")
 
+_bearer_scheme = HTTPBearer(auto_error=False)
+
+async def verify_api_secret(credentials: HTTPAuthorizationCredentials = Depends(_bearer_scheme)):
+    token = credentials.credentials if credentials else None
+    if not token or not hmac.compare_digest(token, API_SECRET):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
 def sign_session_data(data: dict) -> str:
     payload = base64.urlsafe_b64encode(json.dumps(data).encode()).decode().rstrip('=')
     signature = hmac.new(API_SECRET.encode(), payload.encode(), hashlib.sha256).hexdigest()[:16]
@@ -229,7 +237,7 @@ def classify_intent(message: str) -> str:
 
 # --- Routes ---
 @app.post("/v1/sessions")
-async def create_session(request: SessionCreate):
+async def create_session(request: SessionCreate, _: None = Depends(verify_api_secret)):
     with TelemetryTimer() as timer:
         session_uuid = str(uuid.uuid4())
         token_data = {
