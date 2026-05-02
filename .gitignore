@@ -1,0 +1,25 @@
+# Debug artifacts
+logs_dump.json
+logs/
+
+# Web test artifacts
+web/test-results/
+web/playwright-report/
+web/.next/
+web/node_modules/
+
+# Python
+pycache/
+*.pyc
+.venv/
+api/pycache/
+
+# R
+.Rproj.user/
+renv/library/
+*.RData
+*.Rhistory
+
+# Misc
+.DS_Store
+.env
