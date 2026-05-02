@@ -2,7 +2,12 @@ import os
 import json
 import pytest
 from fastapi.testclient import TestClient
-from main import app, sign_session_data
+from fastapi import HTTPException
+
+os.environ["API_SECRET"] = "testsecret"
+
+import main
+from main import app, sign_session_data, validate_session_token
 
 client = TestClient(app)
 
@@ -14,6 +19,28 @@ def create_test_session(mode="guided", plan=None):
         "analysis_plan": plan
     }
     return sign_session_data(token_data)
+
+def test_sign_and_validate_session_token_round_trip():
+    main.API_SECRET = "testsecret"
+    token_data = {
+        "id": "roundtrip-session",
+        "analysis_mode": "guided",
+        "objective": "Token test",
+        "analysis_plan": "1. test",
+    }
+
+    token = sign_session_data(token_data)
+    payload = validate_session_token(token)
+
+    assert payload == token_data
+
+def test_validate_session_token_rejects_garbage():
+    main.API_SECRET = "testsecret"
+
+    with pytest.raises(HTTPException) as exc:
+        validate_session_token("garbage-token")
+
+    assert exc.value.status_code == 403
 
 def test_generate_sample_data():
     sid = create_test_session()
