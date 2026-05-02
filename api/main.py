@@ -150,8 +150,15 @@ def extract_r_code(text: str, strict: bool = False) -> str:
 
 def validate_session_token(token: str) -> dict:
     try:
-        if not token or "." not in token:
-            print(f"AUTH: token_present=False, failure_reason=missing_or_malformed")
+        token = (token or "").strip()
+        print(f"AUTH: secret_prefix={API_SECRET[:4] if API_SECRET else 'NONE'}")
+        if token.startswith('"') and token.endswith('"') and len(token) >= 2:
+            token = token[1:-1]
+        if not token:
+            print("AUTH: token_present=False, failure_reason=missing_or_malformed")
+            raise ValueError("Malformed token")
+        if "." not in token:
+            print("AUTH: token_present=True, failure_reason=missing_or_malformed")
             raise ValueError("Malformed token")
         
         payload_b64, signature = token.rsplit(".", 1)
