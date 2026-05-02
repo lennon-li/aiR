@@ -53,6 +53,20 @@ function(session_id = "anonymous", code = "", persist_bucket = "air-mvp-lennon-l
   }
   plot_history <- get(".air_plot_history", envir = target_env)
   initial_objs <- ls(all.names = TRUE, envir = target_env)
+
+  summarize_object <- function(name, env) {
+    value <- get(name, envir = env)
+    obj_type <- class(value)[1]
+    details <- ""
+
+    if (inherits(value, "data.frame")) {
+      details <- paste0(nrow(value), " obs. of ", ncol(value), " variables")
+    } else if (is.atomic(value) || is.list(value)) {
+      details <- paste(length(value), ifelse(length(value) == 1, "element", "elements"))
+    }
+
+    list(name = name, type = obj_type, details = details)
+  }
   
   tmp_plot <- tempfile(fileext = ".png")
   ragg::agg_png(tmp_plot, width = 800, height = 600, res = 72)
@@ -82,6 +96,7 @@ function(session_id = "anonymous", code = "", persist_bucket = "air-mvp-lennon-l
 
   gcs_plot_path <- NULL
   plot_url <- ""
+  plot_paths <- list()
   if (file.exists(tmp_plot) && file.info(tmp_plot)$size > 3000) {
     rand_id <- basename(tempfile(pattern=""))
     plot_name <- paste0("plot_", format(Sys.time(), "%Y%m%d_%H%M%OS6"), "_", rand_id, ".png")
@@ -89,6 +104,7 @@ function(session_id = "anonymous", code = "", persist_bucket = "air-mvp-lennon-l
     gcs_upload(tmp_plot, bucket = persist_bucket, name = gcs_plot_path)
     
     plot_url <- paste0("https://storage.googleapis.com/", persist_bucket, "/", gcs_plot_path)
+    plot_paths <- list(gcs_plot_path)
     plot_history <- c(gcs_plot_path, plot_history)
     assign(".air_plot_history", plot_history, envir = target_env)
   }
@@ -96,6 +112,9 @@ function(session_id = "anonymous", code = "", persist_bucket = "air-mvp-lennon-l
 
   final_objs <- ls(all.names = TRUE, envir = target_env)
   changed <- !identical(initial_objs, final_objs)
+  objects_changed <- setdiff(final_objs, initial_objs)
+  visible_objs <- final_objs[!grepl("^\\.", final_objs)]
+  environment <- lapply(visible_objs, summarize_object, env = target_env)
   
   if (changed || !has_state || !is.null(gcs_plot_path)) {
       tryCatch({
@@ -115,7 +134,13 @@ function(session_id = "anonymous", code = "", persist_bucket = "air-mvp-lennon-l
   }
 
   list(
+    status = if (grepl("^Error:", result)) "error" else "success",
+    stdout = output_text,
     output = output_text,
-    plot_url = plot_url
+    plots = plot_paths,
+    plot_url = plot_url,
+    environment = environment,
+    objects_changed = objects_changed,
+    error = if (grepl("^Error:", result)) result else NULL
   )
 }

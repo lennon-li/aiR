@@ -105,6 +105,11 @@ class AgentChatRequest(BaseModel):
     context: Optional[dict] = None
 
 # --- Helpers ---
+def normalize_agent_event(event: Optional[str]) -> Optional[str]:
+    if event == "WELCOME":
+        return "playbookStart"
+    return event
+
 def save_execution_result(session_uuid: str, result: dict):
     bucket = storage_client.bucket(SESSION_BUCKET)
     blob = bucket.blob(f"sessions/{session_uuid}/last_execution.json")
@@ -169,6 +174,71 @@ def is_low_signal_reply(text: str) -> bool:
 def is_placeholder_code(text: str) -> bool:
     cleaned = (text or "").strip()
     return cleaned in {"", "..."} or bool(re.fullmatch(r"[.`\s]+", cleaned))
+
+def strip_r_code_blocks(text: str) -> str:
+    if not text:
+        return ""
+
+    without_r_fences = re.sub(r"```(?:[Rr])\n?[\s\S]*?```", "", text)
+    without_generic_fences = re.sub(r"```\n?[\s\S]*?```", "", without_r_fences)
+    collapsed = re.sub(r"\n{3,}", "\n\n", without_generic_fences)
+    return collapsed.strip()
+
+def normalize_plot_refs(raw_plots, plot_url: Optional[str] = None) -> List[str]:
+    normalized = []
+    candidates = list(raw_plots or [])
+
+    if plot_url:
+        candidates.append(plot_url)
+
+    for raw_path in candidates:
+        plot_path = raw_path[0] if isinstance(raw_path, list) and len(raw_path) > 0 else raw_path
+        if not isinstance(plot_path, str) or not plot_path:
+            continue
+        if plot_path.startswith("http://") or plot_path.startswith("https://"):
+            normalized.append(plot_path)
+        else:
+            normalized.append(f"/v1/artifacts/{plot_path.lstrip('/')}")
+
+    # Preserve order while de-duplicating.
+    return list(dict.fromkeys(normalized))
+
+def summarize_environment(target_env: dict) -> List[dict]:
+    env_summary = []
+    for name, value in target_env.items():
+        if name.startswith("."):
+            continue
+
+        obj_type = type(value).__name__
+        details = ""
+        shape = getattr(value, "shape", None)
+        if isinstance(shape, tuple) and len(shape) == 2:
+            details = f"{shape[0]} rows x {shape[1]} cols"
+        elif isinstance(value, (list, tuple, set)):
+            details = f"{len(value)} items"
+        elif isinstance(value, dict):
+            details = f"{len(value)} keys"
+
+        env_summary.append({"name": name, "type": obj_type, "details": details})
+
+    return env_summary
+
+def normalize_r_service_result(r_result: dict) -> dict:
+    normalized = dict(r_result or {})
+    normalized.setdefault("status", "success")
+
+    if "stdout" not in normalized:
+        normalized["stdout"] = normalized.get("output", "")
+    if "environment" not in normalized or normalized["environment"] is None:
+        normalized["environment"] = []
+    if "objects_changed" not in normalized or normalized["objects_changed"] is None:
+        normalized["objects_changed"] = []
+
+    normalized["plots"] = normalize_plot_refs(
+        normalized.get("plots", []),
+        plot_url=normalized.get("plot_url"),
+    )
+    return normalized
 
 def validate_session_token(token: str) -> dict:
     try:
@@ -279,6 +349,8 @@ async def agent_chat(request: AgentChatRequest):
     if analysis_mode == "auto":
         analysis_mode = "autonomous"
 
+    normalized_event = normalize_agent_event(request.event)
+
     # 2. Setup Dialogflow Client
     client_options = None
     if LOCATION != "global":
@@ -324,9 +396,9 @@ async def agent_chat(request: AgentChatRequest):
     
     # 6. Prepare Query Input
     query_input = None
-    if request.event:
+    if normalized_event:
         query_input = dialogflow.QueryInput(
-            event=dialogflow.EventInput(event=request.event),
+            event=dialogflow.EventInput(event=normalized_event),
             language_code=LANGUAGE_CODE
         )
     else:
@@ -353,7 +425,7 @@ async def agent_chat(request: AgentChatRequest):
         print(f"DEBUG: Dialogflow Response: {response}")
         
         # Fallback for playbookStart
-        if request.event == "playbookStart" and not response.query_result.response_messages:
+        if normalized_event == "playbookStart" and not response.query_result.response_messages:
             fallback_input = dialogflow.QueryInput(
                 text=dialogflow.TextInput(text="hi"),
                 language_code=LANGUAGE_CODE
@@ -398,9 +470,11 @@ async def agent_chat(request: AgentChatRequest):
         extracted_code = extract_r_code(reply_text, strict=(analysis_mode == "autonomous"))
         if is_placeholder_code(extracted_code):
             extracted_code = ""
+        elif extracted_code:
+            reply_text = strip_r_code_blocks(reply_text)
 
         if is_low_signal_reply(reply_text) and not extracted_code:
-            if request.event == "playbookStart":
+            if normalized_event == "playbookStart":
                 reply_text = "Ready. Ask for R code or describe the analysis you want to run."
             else:
                 reply_text = "I can help with that. Ask for R code or describe the analysis step you want."
@@ -415,7 +489,7 @@ async def agent_chat(request: AgentChatRequest):
         r_latency = 0
         
         # Determine if we should auto-execute
-        if extracted_code and not request.event:
+        if extracted_code and not normalized_event:
             if analysis_mode == "autonomous":
                 should_execute = True
             elif analysis_mode == "balanced":
@@ -601,18 +675,10 @@ async def execute(session_id: str, payload: dict = Body(...)):
                 status = "error"
                 error_msg = f"R Service Failure ({resp.status_code})"
             else:
-                r_result = resp.json()
+                r_result = normalize_r_service_result(resp.json())
                 if r_result.get("status") == "error":
                     status = "error"
                     error_msg = r_result.get("error")
-                else:
-                    plot_urls = []
-                    raw_plots = r_result.get("plots", [])
-                    for raw_path in raw_plots:
-                        plot_path = raw_path[0] if isinstance(raw_path, list) and len(raw_path) > 0 else raw_path
-                        if not isinstance(plot_path, str): continue
-                        plot_urls.append(f"/v1/artifacts/{plot_path}")
-                    r_result["plots"] = plot_urls
         except Exception as e:
             status = "error"
             error_msg = str(e)
