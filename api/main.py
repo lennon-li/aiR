@@ -606,13 +606,26 @@ async def execute(session_id: str, payload: dict = Body(...)):
                     status = "error"
                     error_msg = r_result.get("error")
                 else:
+                    # Normalize R service response shape to match frontend expectations.
+                    # R service returns {output, plot_url}; frontend expects {status, stdout, plots, environment}.
                     plot_urls = []
                     raw_plots = r_result.get("plots", [])
                     for raw_path in raw_plots:
                         plot_path = raw_path[0] if isinstance(raw_path, list) and len(raw_path) > 0 else raw_path
                         if not isinstance(plot_path, str): continue
                         plot_urls.append(f"/v1/artifacts/{plot_path}")
-                    r_result["plots"] = plot_urls
+                    # Also handle single plot_url field from R service
+                    single_plot = r_result.get("plot_url", "")
+                    if single_plot and isinstance(single_plot, str):
+                        plot_urls.append(single_plot)
+                    r_result = {
+                        "status": "success",
+                        "stdout": r_result.get("stdout") or r_result.get("output", ""),
+                        "plots": plot_urls,
+                        "environment": r_result.get("environment", []),
+                        "objects_changed": r_result.get("objects_changed", []),
+                        "error": None,
+                    }
         except Exception as e:
             status = "error"
             error_msg = str(e)
