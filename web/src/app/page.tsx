@@ -347,60 +347,37 @@ export default function AIRApp() {
         dataset_summary: objects.length > 0 ? `Objects in environment: ${objects.map(o => o.name).join(', ')}` : "No dataset loaded yet."
       };
 
-      if (event) {
-        const res = await api.sendAgentChat(targetSessionId, msg, context, event);
-        const normalizedCode = normalizeRCode(res.code);
-        const cleanedReply = normalizedCode ? res.reply : stripEmptyCodeFences(res.reply);
+      const res = await api.sendAgentChat(targetSessionId, msg, context, event);
+      const normalizedCode = normalizeRCode(res.code);
+      const cleanedReply = normalizedCode ? res.reply : stripEmptyCodeFences(res.reply);
 
-        const newMsg: ChatMessage = { 
-            role: 'ai', 
-            text: cleanedReply, 
-            code: normalizedCode || undefined,
-            executed: res.executed,
-            execution_output: res.execution_output,
-            execution_error: res.execution_error,
-            plots: res.plots,
-            environment: res.environment,
-            groundingType: 'Conversation Agent',
-            intent: res.intent 
-        };
-
-        setChatLog(prev => [...prev, newMsg]);
-        
-        if (res.executed) {
-            if (res.code) {
-                addToConsole(res.code, 'input', 'R copilot (auto)');
-                if (res.execution_output) addToConsole(res.execution_output, 'output');
-                if (res.execution_error) addToConsole(res.execution_error, 'error');
-            }
-            if (res.environment) setObjects(res.environment);
-            if (res.plots && res.plots.length > 0) {
-                setPlots(prev => [...res.plots!, ...prev]);
-                setActiveRightTab('plots');
-            }
-            setLastRunTime('auto');
-        }
-      } else {
-        const res = await api.sendChat(targetSessionId, msg, getSessionMode(), {
-          objective,
-          env_summary: objects,
-          recent_history: commandHistory,
-          last_error: lastError || undefined,
-          coaching_depth: coachingDepth
-        });
-
-        const sr = res.structured_response;
-        const normalizedCode = normalizeRCode(sr?.code || extractRCode(res.response, res.intent));
-        const cleanedReply = normalizedCode ? res.response : stripEmptyCodeFences(res.response);
-
-        setChatLog(prev => [...prev, {
-          role: 'ai',
-          text: cleanedReply,
+      const newMsg: ChatMessage = { 
+          role: 'ai', 
+          text: cleanedReply, 
           code: normalizedCode || undefined,
-          structured_response: sr,
-          groundingType: res.grounded ? (res.g_type || 'Grounded') : undefined,
-          intent: res.intent
-        }]);
+          executed: res.executed,
+          execution_output: res.execution_output,
+          execution_error: res.execution_error,
+          plots: res.plots,
+          environment: res.environment,
+          groundingType: 'Conversation Agent',
+          intent: res.intent 
+      };
+
+      setChatLog(prev => [...prev, newMsg]);
+      
+      if (res.executed) {
+          if (res.code) {
+              addToConsole(res.code, 'input', 'R copilot (auto)');
+              if (res.execution_output) addToConsole(res.execution_output, 'output');
+              if (res.execution_error) addToConsole(res.execution_error, 'error');
+          }
+          if (res.environment) setObjects(res.environment);
+          if (res.plots && res.plots.length > 0) {
+              setPlots(prev => [...res.plots!, ...prev]);
+              setActiveRightTab('plots');
+          }
+          setLastRunTime('auto');
       }
 
     } catch (err) { 

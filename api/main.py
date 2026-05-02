@@ -184,6 +184,16 @@ def strip_r_code_blocks(text: str) -> str:
     collapsed = re.sub(r"\n{3,}", "\n\n", without_generic_fences)
     return collapsed.strip()
 
+def extract_model_output_from_response_dump(full_resp_str: str) -> str:
+    for pattern in [
+        r'model_output:\s*"([\s\S]*?)"\n',
+        r'answer:\s*"([\s\S]*?)"\n',
+    ]:
+        match = re.search(pattern, full_resp_str)
+        if match:
+            return match.group(1).replace('\\n', '\n').replace("\\'", "'").replace('\\"', '"').strip()
+    return ""
+
 def normalize_plot_refs(raw_plots, plot_url: Optional[str] = None) -> List[str]:
     normalized = []
     candidates = list(raw_plots or [])
@@ -454,16 +464,14 @@ async def agent_chat(request: AgentChatRequest):
         # This is a robust "catch-all" for Playbook/Proto-nested content.
         if not reply_text.strip() or "```r" not in reply_text:
             full_resp_str = str(response)
-            # Find R code fences anywhere in the response dump
-            code_match = re.search(r"```r\n?([\s\S]*?)```", full_resp_str)
-            if code_match:
-                # If we found code but didn't have reply text, use the code block as the source
-                reply_text = code_match.group(0)
-            elif "model_output:" in full_resp_str:
-                # Pull the raw model output and unescape it
-                model_match = re.search(r'model_output:\s*"([\s\S]*?)"', full_resp_str)
-                if model_match:
-                    reply_text = model_match.group(1).replace('\\n', '\n').replace('\\"', '"')
+            extracted_text = extract_model_output_from_response_dump(full_resp_str)
+            if extracted_text:
+                reply_text = extracted_text
+            else:
+                code_match = re.search(r"```r\n?([\s\S]*?)```", full_resp_str)
+                if code_match:
+                    # Last-resort fallback if the dump only exposes a fenced code block.
+                    reply_text = code_match.group(0)
 
         reply_text = reply_text.strip()
         
@@ -474,7 +482,7 @@ async def agent_chat(request: AgentChatRequest):
         elif extracted_code:
             reply_text = strip_r_code_blocks(reply_text)
 
-        if not reply_text.strip():
+        if not reply_text.strip() and not extracted_code:
             if normalized_event == "playbookStart":
                 reply_text = "Ready. Ask for R code or describe the analysis you want to run."
             else:
