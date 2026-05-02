@@ -1,5 +1,11 @@
 // web/src/app/api.ts
 export const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "https://air-api-652486026072.us-central1.run.app";
+const API_SECRET = process.env.NEXT_PUBLIC_API_SECRET;
+
+const getApiHeaders = (): HeadersInit => ({
+  'Content-Type': 'application/json',
+  ...(API_SECRET ? { Authorization: `Bearer ${API_SECRET}` } : {}),
+});
 
 export interface ObjectSummary {
   name: string;
@@ -47,7 +53,7 @@ export type SessionMode = 'guided' | 'balanced' | 'autonomous';
 export const createSession = async (objective: string, mode: SessionMode, plan?: string | null): Promise<{ session_id: string }> => {
   const resp = await fetch(`${API_BASE}/v1/sessions`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getApiHeaders(),
     body: JSON.stringify({ objective, analysis_mode: mode, analysis_plan: plan })
   });
   return resp.json();
@@ -76,7 +82,7 @@ export const sendAgentChat = async (
 }> => {
   const response = await fetch(`${API_BASE}/v1/agent/chat`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getApiHeaders(),
     body: JSON.stringify({
       session_id: sessionId,
       message,
@@ -106,7 +112,7 @@ export const sendChat = async (
 ): Promise<ChatResponse> => {
   const resp = await fetch(`${API_BASE}/v1/sessions/${sessionId}/chat`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getApiHeaders(),
     body: JSON.stringify({ 
       message, 
       analysis_mode: mode, 
@@ -130,7 +136,7 @@ export const sendChatStream = async (
 ) => {
   const resp = await fetch(`${API_BASE}/v1/sessions/${sessionId}/chat_stream`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getApiHeaders(),
       body: JSON.stringify({ 
         message, 
         analysis_mode: analysisMode, 
@@ -172,7 +178,7 @@ export const sendChatStream = async (
 export const refreshSession = async (sessionId: string, mode: SessionMode, depth?: number) => {
   const resp = await fetch(`${API_BASE}/v1/sessions/${sessionId}/refresh`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getApiHeaders(),
     body: JSON.stringify({ analysis_mode: mode, coaching_depth: depth })
   });
   return resp.json();
@@ -181,7 +187,7 @@ export const refreshSession = async (sessionId: string, mode: SessionMode, depth
 export const executeR = async (sessionId: string, code: string, isAgentCode: boolean = false, provenance: string = "You"): Promise<ExecuteResponse> => {
   const resp = await fetch(`${API_BASE}/v1/sessions/${sessionId}/execute`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getApiHeaders(),
     body: JSON.stringify({ code, is_agent_code: isAgentCode, provenance })
   });
   return resp.json();
@@ -191,7 +197,7 @@ export const reportTelemetry = async (sessionId: string, eventType: string, data
   try {
     await fetch(`${API_BASE}/v1/sessions/${sessionId}/telemetry`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getApiHeaders(),
       body: JSON.stringify({ event_type: eventType, data })
     });
   } catch (e) {
