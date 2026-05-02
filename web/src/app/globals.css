@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.2);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.4);
+}
+
+/* R Syntax Highlighting Colors (Simplified) */
+.r-comment { color: #6a737d; font-style: italic; }
+.r-keyword { color: #d73a49; font-weight: bold; }
+.r-function { color: #6f42c1; }
+.r-string { color: #032f62; }
+.r-number { color: #005cc5; }
+
+/* Structured Coaching Styles */
+.coach-block {
+  @apply mt-4 border-l-4 border-indigo-400 pl-4 py-2 bg-indigo-50/30 rounded-r-xl;
+}
+.coach-header {
+  @apply text-[10px] font-black uppercase tracking-widest text-indigo-500 mb-1 block;
+}
+.coach-interpretation {
+  @apply mt-4 p-4 bg-emerald-50/50 border border-emerald-100 rounded-2xl italic text-slate-700;
+}
+.coach-options {
+  @apply mt-4 flex flex-col gap-2;
+}
+.coach-option-btn {
+  @apply text-left p-3 rounded-xl border border-slate-200 bg-white hover:border-indigo-400 hover:bg-indigo-50 transition-all text-xs font-bold;
+}
+
