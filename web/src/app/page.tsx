@@ -435,17 +435,9 @@ export default function AIRApp() {
     } catch { console.error("Policy sync failed"); }
   };
 
-  const extractRCode = (text: string, intent?: string): string => {
+  const extractRCode = (text: string): string => {
     const blocks = Array.from(text.matchAll(/```[Rr]\n?([\s\S]*?)```/g));
-    if (blocks.length > 0) return blocks.map(b => b[1].trim()).join('\n\n');
-    const coachMatch = text.match(/(?:Why:|Rationale:)?\n?([\s\S]*?)\n?(?:Interpretation:|Next step:|$)/i);
-    if (coachMatch && coachMatch[1].trim()) {
-        const potentialCode = coachMatch[1].trim();
-        if (potentialCode.includes('<-') || potentialCode.includes('(')) {
-            return potentialCode.replace(/What we’re doing:.*?\n/i, '').replace(/Why:.*?\n/i, '').trim();
-        }
-    }
-    if (intent === 'CODE_GEN' && text.length < 1000 && (text.includes('<-') || text.includes('library'))) return text.trim();
+    if (blocks.length > 0) return blocks.map(b => b[1].trim()).join(‘\n\n’);
     return "";
   };
 
@@ -630,7 +622,7 @@ export default function AIRApp() {
                 {chatLog.map((m, i) => {
                     const isUser = m.role === 'user';
                     const sr = m.structured_response;
-                    const rCode = normalizeRCode(m.code || (sr ? sr.code : extractRCode(m.text, m.intent)));
+                    const rCode = normalizeRCode(m.code || (sr ? sr.code : extractRCode(m.text)));
                     let renderedText: React.ReactNode = m.text;
                     
                     if (!isUser && sr && sr.response_type === 'analysis_step') {
