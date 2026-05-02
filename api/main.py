@@ -196,7 +196,8 @@ def normalize_plot_refs(raw_plots, plot_url: Optional[str] = None) -> List[str]:
         if not isinstance(plot_path, str) or not plot_path:
             continue
         if plot_path.startswith("http://") or plot_path.startswith("https://"):
-            normalized.append(plot_path)
+            gcs_match = re.match(r"https?://storage\.googleapis\.com/[^/]+/(.+)", plot_path)
+            normalized.append(f"/v1/artifacts/{gcs_match.group(1)}" if gcs_match else plot_path)
         else:
             normalized.append(f"/v1/artifacts/{plot_path.lstrip('/')}")
 
@@ -473,7 +474,12 @@ async def agent_chat(request: AgentChatRequest):
         elif extracted_code:
             reply_text = strip_r_code_blocks(reply_text)
 
-        if is_low_signal_reply(reply_text) and not extracted_code:
+        if not reply_text.strip():
+            if normalized_event == "playbookStart":
+                reply_text = "Ready. Ask for R code or describe the analysis you want to run."
+            else:
+                reply_text = "I can help with that. Ask for R code or describe the analysis step you want."
+        elif is_low_signal_reply(reply_text) and not extracted_code and normalized_event != "playbookStart":
             if normalized_event == "playbookStart":
                 reply_text = "Ready. Ask for R code or describe the analysis you want to run."
             else:

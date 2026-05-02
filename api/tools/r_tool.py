@@ -1,6 +1,7 @@
 import os
 import requests
 import subprocess
+import re
 from google.oauth2 import id_token
 from google.auth.transport.requests import Request as GoogleAuthRequest
 
@@ -15,7 +16,8 @@ def normalize_plot_refs(raw_plots, plot_url=None):
         if not isinstance(plot_path, str) or not plot_path:
             continue
         if plot_path.startswith("http://") or plot_path.startswith("https://"):
-            plot_urls.append(plot_path)
+            gcs_match = re.match(r"https?://storage\.googleapis\.com/[^/]+/(.+)", plot_path)
+            plot_urls.append(f"/v1/artifacts/{gcs_match.group(1)}" if gcs_match else plot_path)
         else:
             plot_urls.append(f"/v1/artifacts/{plot_path.lstrip('/')}")
 
