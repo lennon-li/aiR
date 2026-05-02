@@ -359,6 +359,7 @@ async def agent_chat(request: AgentChatRequest):
     # Map 'auto' to 'autonomous' for consistency
     if analysis_mode == "auto":
         analysis_mode = "autonomous"
+    policy = get_session_policy(analysis_mode)
 
     normalized_event = normalize_agent_event(request.event)
 
@@ -481,6 +482,24 @@ async def agent_chat(request: AgentChatRequest):
             extracted_code = ""
         elif extracted_code:
             reply_text = strip_r_code_blocks(reply_text)
+
+        if not extracted_code and not normalized_event and request.message:
+            fallback_response = call_agent(
+                session_uuid,
+                request.message,
+                policy,
+                {
+                    "objective": objective,
+                    "analysis_plan": session_data.get("analysis_plan"),
+                    "env_summary": last_result.get("environment", []) if last_result else [],
+                    "recent_history": [],
+                    "last_error": None,
+                    "grounding_context": "",
+                },
+            )
+            if fallback_response.code:
+                extracted_code = fallback_response.code
+                reply_text = fallback_response.summary or fallback_response.what or reply_text
 
         if not reply_text.strip() and not extracted_code:
             if normalized_event == "playbookStart":
