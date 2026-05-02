@@ -33,5 +33,4 @@ gcloud run deploy air-web `
   --allow-unauthenticated `
   --region $REGION `
   --project $PROJECT_ID `
-  --set-build-env-vars "NEXT_PUBLIC_API_BASE=https://air-api-652486026072.us-central1.run.app,NEXT_PUBLIC_API_SECRET=$env:NEXT_PUBLIC_API_SECRET" `
   --quiet
