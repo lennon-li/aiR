@@ -175,6 +175,17 @@ def is_placeholder_code(text: str) -> bool:
     cleaned = (text or "").strip()
     return cleaned in {"", "..."} or bool(re.fullmatch(r"[.`\s]+", cleaned))
 
+def is_code_request(message: Optional[str]) -> bool:
+    text = (message or "").lower()
+    if not text.strip():
+        return False
+    code_keywords = [
+        "generate", "simulate", "create", "write code", "plot", "summary",
+        "summarize", "df", "data frame", "regression", "model", "calculate",
+        "boxplot", "scatter", "mean", "sum", "subset"
+    ]
+    return any(keyword in text for keyword in code_keywords)
+
 def strip_r_code_blocks(text: str) -> str:
     if not text:
         return ""
@@ -364,10 +375,7 @@ async def agent_chat(request: AgentChatRequest):
     normalized_event = normalize_agent_event(request.event)
 
     # 2. Setup Dialogflow Client
-    client_options = None
-    if LOCATION != "global":
-        client_options = ClientOptions(api_endpoint=f"{LOCATION}-dialogflow.googleapis.com")
-    
+    client_options = ClientOptions(api_endpoint=f"{LOCATION}-dialogflow.googleapis.com")
     client = dialogflow.SessionsClient(credentials=credentials, client_options=client_options)
     session_path = client.session_path(PROJECT_ID, LOCATION, AGENT_ID, session_uuid)
     
@@ -455,15 +463,23 @@ async def agent_chat(request: AgentChatRequest):
                 if "text" in msg.payload:
                     reply_text += str(msg.payload["text"])
         
-        # Second, check for generative info (Playbooks)
+        # Second, check for generative info (Playbooks) via action_tracing_info
         if not reply_text.strip():
             gen_info = getattr(response.query_result, "generative_info", None)
             if gen_info:
-                reply_text = getattr(gen_info, "model_output", "")
-        
-        # Third, if we still don't have R code or text, scan the WHOLE response string representation.
-        # This is a robust "catch-all" for Playbook/Proto-nested content.
-        if not reply_text.strip() or "```r" not in reply_text:
+                action_traces = getattr(gen_info, "action_tracing_info", [])
+                utterances = []
+                for trace in action_traces:
+                    agent_utterance = getattr(trace, "agent_utterance", None)
+                    if agent_utterance:
+                        text = getattr(agent_utterance, "text", "")
+                        if text:
+                            utterances.append(text)
+                if utterances:
+                    reply_text = "\n".join(utterances)
+
+        # Third, only if still empty, scan the WHOLE response string representation.
+        if not reply_text.strip():
             full_resp_str = str(response)
             extracted_text = extract_model_output_from_response_dump(full_resp_str)
             if extracted_text:
@@ -471,7 +487,6 @@ async def agent_chat(request: AgentChatRequest):
             else:
                 code_match = re.search(r"```r\n?([\s\S]*?)```", full_resp_str)
                 if code_match:
-                    # Last-resort fallback if the dump only exposes a fenced code block.
                     reply_text = code_match.group(0)
 
         reply_text = reply_text.strip()
@@ -483,7 +498,7 @@ async def agent_chat(request: AgentChatRequest):
         elif extracted_code:
             reply_text = strip_r_code_blocks(reply_text)
 
-        if not extracted_code and not normalized_event and request.message:
+        if not extracted_code and not normalized_event and is_code_request(request.message):
             fallback_response = call_agent(
                 session_uuid,
                 request.message,
@@ -507,10 +522,7 @@ async def agent_chat(request: AgentChatRequest):
             else:
                 reply_text = "I can help with that. Ask for R code or describe the analysis step you want."
         elif is_low_signal_reply(reply_text) and not extracted_code and normalized_event != "playbookStart":
-            if normalized_event == "playbookStart":
-                reply_text = "Ready. Ask for R code or describe the analysis you want to run."
-            else:
-                reply_text = "I can help with that. Ask for R code or describe the analysis step you want."
+            reply_text = "I can help with that. Ask for R code or describe the analysis step you want."
         
         # 10. Apply Execution Policy
         executed = False

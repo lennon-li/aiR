@@ -324,7 +324,7 @@ export default function AIRApp() {
   const initializeCoachSession = async (newSessionId: string, initialMsg?: string) => {
     hasStartedAgentSession.current = true;
 
-    await triggerStartup("WELCOME", newSessionId);
+    await triggerStartup(newSessionId);
 
     if (initialMsg) {
       await submitChat(initialMsg, undefined, newSessionId);
@@ -388,7 +388,7 @@ export default function AIRApp() {
     }
   };
 
-  const triggerStartup = async (event: string, sid?: string) => {
+  const triggerStartup = async (sid?: string) => {
     setIsAiLoading(true);
     try {
         const targetSessionId = sid || sessionId;
@@ -399,7 +399,7 @@ export default function AIRApp() {
           guidance_depth: getGuidanceMode(coachingDepth),
           dataset_summary: "Startup"
         };
-        const res = await api.sendAgentChat(targetSessionId, undefined, context, event);
+        const res = await api.sendAgentChat(targetSessionId, undefined, context, "WELCOME");
         const normalizedCode = normalizeRCode(res.code);
         const cleanedReply = normalizedCode ? res.reply : stripEmptyCodeFences(res.reply);
 
@@ -683,9 +683,9 @@ export default function AIRApp() {
             <div className="absolute inset-y-0 -left-2 -right-2 z-20" onMouseDown={() => { activeResizer.current = 'copilot'; document.body.style.cursor = 'col-resize'; }} />
         </div>
 
-        {/* CENTER: CONSOLE (Grey) */}
-        <section className="flex-1 flex flex-col bg-[#ECEFF3] overflow-hidden">
-            <div className="h-12 border-b border-slate-200 bg-[#E2E8F0] flex items-center px-8 justify-between shrink-0">
+        {/* CENTER: CONSOLE (Mid Grey) */}
+        <section className="flex-1 flex flex-col bg-[#E3E8EF] overflow-hidden">
+            <div className="h-12 border-b border-slate-300/70 bg-[#D7DEE8] flex items-center px-8 justify-between shrink-0">
                 <div className="flex items-center gap-3">
                     <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                     <span className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500">R Console</span>
@@ -697,17 +697,17 @@ export default function AIRApp() {
             </div>
             <div className="flex-1 overflow-y-auto p-10 font-mono text-[13px] leading-relaxed text-slate-800 scroll-smooth custom-scrollbar">
                 {consoleLog.map((line, i) => (
-                    <div key={i} className={`mb-6 ${line.type === 'input' ? 'text-blue-900 bg-blue-50 p-4 rounded-xl border-l-2 border-blue-400 relative group/line' : line.type === 'error' ? 'text-rose-800 bg-rose-50 p-6 rounded-2xl border-l-2 border-rose-400' : line.type === 'system' ? 'text-slate-400 text-[9px] font-black uppercase tracking-[0.4em] py-8 text-center border-y border-slate-200 my-4' : 'pl-6 text-slate-700'} whitespace-pre-wrap`}>
-                        {line.type === 'input' && <span className="absolute -top-3 left-4 px-2 bg-[#ECEFF3] text-[7px] font-black uppercase tracking-widest text-slate-500">{line.prov}</span>}
+                    <div key={i} className={`mb-6 ${line.type === 'input' ? 'text-blue-950 bg-[#F1F5FB] p-4 rounded-xl border-l-2 border-blue-500 relative group/line' : line.type === 'error' ? 'text-rose-800 bg-rose-50 p-6 rounded-2xl border-l-2 border-rose-400' : line.type === 'system' ? 'text-slate-500 text-[9px] font-black uppercase tracking-[0.4em] py-8 text-center border-y border-slate-300/70 my-4' : 'pl-6 text-slate-700'} whitespace-pre-wrap`}>
+                        {line.type === 'input' && <span className="absolute -top-3 left-4 px-2 bg-[#E3E8EF] text-[7px] font-black uppercase tracking-widest text-slate-600">{line.prov}</span>}
                         {typeof line.t === 'string' ? line.t : JSON.stringify(line.t)}
                     </div>
                 ))}
                 {consoleLog.length === 0 && <div className="h-full flex items-center justify-center text-slate-300 italic font-black uppercase tracking-[0.8em] text-xs">Environment Ready</div>}
                 <div ref={consoleBottomRef} className="h-px w-full shrink-0" />
             </div>
-            <div className="p-6 bg-[#E2E8F0] border-t border-slate-200 flex items-center gap-4 shadow-2xl">
+            <div className="p-6 bg-[#D7DEE8] border-t border-slate-300/70 flex items-center gap-4 shadow-2xl">
                 <span className="text-blue-700 font-bold font-mono text-xl">{'>'}</span>
-                <input data-testid="repl-input" className="flex-1 bg-white border border-slate-300 p-4 rounded-xl outline-none text-slate-900 font-mono text-sm placeholder:text-slate-300 focus:border-blue-500 transition-all shadow-inner" placeholder="Submit R code..." value={replInput} onChange={e => setReplInput(e.target.value)} onKeyDown={e => {
+                <input data-testid="repl-input" className="flex-1 bg-[#F8FAFC] border border-slate-300 p-4 rounded-xl outline-none text-slate-900 font-mono text-sm placeholder:text-slate-400 focus:border-blue-500 transition-all shadow-inner" placeholder="Submit R code..." value={replInput} onChange={e => setReplInput(e.target.value)} onKeyDown={e => {
                     if (e.key === 'Enter') { e.preventDefault(); executeR(replInput, false, 'You'); }
                     else if (e.key === 'ArrowUp') { e.preventDefault(); const n = historyIndex + 1; if (n < commandHistory.length) { setHistoryIndex(n); setReplInput(commandHistory[n]); } }
                     else if (e.key === 'ArrowDown') { e.preventDefault(); const n = historyIndex - 1; if (n >= 0) { setHistoryIndex(n); setReplInput(commandHistory[n]); } else { setHistoryIndex(-1); setReplInput(''); } }
