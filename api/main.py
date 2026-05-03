@@ -260,25 +260,17 @@ async def refresh_session(session_id: str, payload: dict = Body(...)):
 @app.post("/v1/agent/chat")
 async def agent_chat(request: AgentChatRequest):
     """
-    Policy-driven orchestrator that uses Dialogflow CX for dialogue 
-    but handles R execution and session state in the backend.
+    Policy-driven orchestrator using Dialogflow CX for dialogue 
+    with state passed via parameters.
     """
-    # 1. Parse and validate session
     session_data = validate_session_token(request.session_id)
     session_uuid = session_data["id"]
     
-    # Priority: context.guidance_depth > session_data.analysis_mode
-    analysis_mode = session_data.get("analysis_mode", "guided")
     agent_context = request.context or {}
-    if agent_context.get("guidance_depth"):
-        analysis_mode = agent_context.get("guidance_depth")
-    
+    analysis_mode = agent_context.get("guidance_depth") or session_data.get("analysis_mode", "guided")
+    coaching_depth = agent_context.get("coaching_depth") or 50
     objective = agent_context.get("objective") or session_data.get("objective", "Exploration")
     
-    # Map 'auto' to 'autonomous' for consistency
-    if analysis_mode == "auto":
-        analysis_mode = "autonomous"
-
     # 2. Setup Dialogflow Client
     client_options = None
     if LOCATION != "global":
@@ -290,40 +282,17 @@ async def agent_chat(request: AgentChatRequest):
     # 3. Retrieve last execution result for context
     last_result = get_last_execution_result(session_uuid)
     
-    # 4. Handle Context (Parameters)
-    agent_context.update({
-        "analysis_mode": analysis_mode,
-        "objective": objective,
-        "core_mandate": CORE_MANDATE,
-        "instruction": CORE_MANDATE,
-        "system_instruction": CORE_MANDATE
-    })
-    
-    if last_result:
-        # Inject last execution summary into context
-        env_summary = last_result.get("environment", [])
-        env_str = ", ".join([obj.get("name") for obj in env_summary])
-        agent_context["last_execution_ok"] = last_result.get("ok", True)
-        agent_context["last_execution_output"] = last_result.get("stdout", "")[:1000] # Truncate for context
-        agent_context["available_objects"] = env_str
-
-    # 5. Prepare final message with injected instruction
-    final_message = request.message
-    if final_message:
-        # Instruction injection with both prefix and suffix to battle recency bias
-        system_prefix = f"### SYSTEM INSTRUCTION ###\n{CORE_MANDATE}\nCURRENT MODE: {analysis_mode.upper()}\n"
-        if last_result:
-            system_prefix += f"PREVIOUS R OUTPUT: {agent_context.get('last_execution_output')}\n"
-        
-        system_suffix = "\n\nCRITICAL: Provide ONLY valid R code in fences. Do not hallucinate results."
-        final_message = f"{system_prefix}\nUSER: {final_message}{system_suffix}"
-
+    # 4. Map Context to Parameters
     query_params = dialogflow.QueryParameters(
-        parameters=agent_context
+        parameters={
+            "analysis_mode": analysis_mode,
+            "coaching_depth": coaching_depth,
+            "objective": objective,
+            "last_execution_output": last_result.get("stdout", "")[:500] if last_result else ""
+        }
     )
     
-    # 6. Prepare Query Input
-    query_input = None
+    # 5. Prepare Query Input (No injection)
     if request.event:
         query_input = dialogflow.QueryInput(
             event=dialogflow.EventInput(event=request.event),
@@ -331,22 +300,15 @@ async def agent_chat(request: AgentChatRequest):
         )
     else:
         query_input = dialogflow.QueryInput(
-            text=dialogflow.TextInput(text=final_message),
+            text=dialogflow.TextInput(text=request.message),
             language_code=LANGUAGE_CODE
         )
     
-    # 7. Execute Detect Intent
-    def do_detect(q_input):
-        req = dialogflow.DetectIntentRequest(
-            session=session_path,
-            query_input=q_input,
-            query_params=query_params
-        )
-        return client.detect_intent(request=req)
-
     try:
         start_time = time.time()
-        response = do_detect(query_input)
+        response = client.detect_intent(request=dialogflow.DetectIntentRequest(
+            session=session_path, query_input=query_input, query_params=query_params
+        ))
         agent_latency = (time.time() - start_time) * 1000
         
         # DEBUG LOGGING
@@ -526,7 +488,8 @@ async def chat(session_id: str, request: ChatRequest):
         "env_summary": request.env_summary,
         "recent_history": request.recent_history,
         "last_error": request.last_error,
-        "grounding_context": grounding_context
+        "grounding_context": grounding_context,
+        "coaching_depth": request.coaching_depth
     }
 
     from schemas import AnalysisStepResponse
@@ -565,7 +528,8 @@ async def chat_stream(session_id: str, request: ChatRequest):
         "env_summary": request.env_summary,
         "recent_history": request.recent_history,
         "last_error": request.last_error,
-        "grounding_context": ""
+        "grounding_context": "",
+        "coaching_depth": request.coaching_depth
     }
 
     async def event_generator():

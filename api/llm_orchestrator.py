@@ -45,41 +45,33 @@ execute_r_code_tool = types.Tool(
 
 def build_system_instruction(policy: dict, context_data: dict) -> str:
     """
-    PHASE 4: Preserve or improve explicit context assembly.
+    PHASE 4: Explicitly handle Coaching Depth and Mode.
     """
-    analysis_mode = policy.get("label", "Guided").lower()
+    mode = policy.get("label", "Guided").lower()
+    depth = context_data.get("coaching_depth", 50)
     
-    base_instr = f"""You are aiR, an R analysis copilot. Direct and fast.
+    # Tiered Coaching Logic
+    if depth > 66:
+        coach_type = "SENIOR STATISTICIAN: Explain assumptions, interpret results deeply, and suggest 2-3 options."
+        option_instr = "You MUST provide 2-3 'options' for the next step as buttons."
+    elif depth < 34:
+        coach_type = "DIRECT ASSISTANT: Just provide code and results. No filler. No options."
+        option_instr = "Leave the 'options' list empty."
+    else:
+        coach_type = "BALANCED COPILOT: Concise explanation and 1 recommendation."
+        option_instr = "Provide 1-2 'options' for the next step."
+
+    base_instr = f"""You are aiR, an R copilot acting as a {coach_type}.
 
 CORE RULES:
-1. NO HALLUCINATION: Use real execution output only.
-2. CONCISENESS: No filler.
-3. MODES ({analysis_mode.upper()}):
-   - GUIDED: Propose next step + R code + Why. No auto-execute.
-   - BALANCED: R code + Short why.
-   - AUTONOMOUS: R code only. Short status.
-4. STATS: Help with Research questions, Outcomes, Predictors, Hypotheses.
-5. FORMAT: Return final answer in structured JSON.
-
-GROUNDING: Use provided 'Grounded Context' for docs.
+1. MODES ({mode.upper()}):
+   - GUIDED: Propose next step + code. 'should_autorun' MUST be FALSE.
+   - AUTONOMOUS: Provide code for direct execution. 'should_autorun' MUST be TRUE.
+2. COACHING: {option_instr}
+3. GROUNDING: Use 'Grounded Context' for R syntax and package docs.
+4. JSON: You MUST output valid JSON following the schema.
 """
-    instructions = f"{base_instr}\n\n"
-    
-    session_ctx = f"--- SESSION STATE ---\n"
-    session_ctx += f"Objective: {context_data.get('objective')}\n"
-    
-    # Environment Summary (Compact)
-    if context_data.get("env_summary"):
-        env_str = "\n".join([f"- {obj.get('name')} ({obj.get('type')}): {obj.get('details')}" for obj in context_data.get('env_summary')[:8]])
-        session_ctx += f"Env:\n{env_str}\n"
-    else:
-        session_ctx += "Env: Empty\n"
-    
-    if context_data.get("last_error"):
-        session_ctx += f"Error: {context_data.get('last_error')}\n"
-
-    instructions += session_ctx
-    return instructions
+    return f"{base_instr}\n\n--- CONTEXT ---\nObj: {context_data.get('objective')}\nEnv: {context_data.get('env_summary')[:5] if context_data.get('env_summary') else 'Empty'}"
 
 def call_agent_stream(session_uuid: str, user_message: str, policy: dict, context_data: dict):
     """
