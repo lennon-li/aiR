@@ -9,16 +9,28 @@ web/.next/
 web/node_modules/
 
 # Python
-pycache/
+__pycache__/
 *.pyc
+*.pyo
 .venv/
-api/pycache/
 
 # R
 .Rproj.user/
 renv/library/
 *.RData
 *.Rhistory
+
+# Build output
+out/
+
+# Backup files
+*.bak.py
+*.bak
+
+# Agent tooling (internal, not for public tracking)
+.omc/
+.agents/
+skills-lock.json
 
 # Misc
 .DS_Store
